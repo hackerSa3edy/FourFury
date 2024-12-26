@@ -1,5 +1,5 @@
 run:
-	uvicorn src.fourfury.main:app --reload
+	uvicorn src.fourfury.run:app --reload
 
 lint:
 	pre-commit run --all
