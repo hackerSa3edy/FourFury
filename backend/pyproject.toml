@@ -10,6 +10,9 @@ packages = [{include = "fourfury", from = "src"}]
 python = "^3.10"
 fastapi = "^0.115.6"
 uvicorn = {extras = ["standard"], version = "^0.34.0"}
+pydantic-settings = "^2.7.0"
+motor = "^3.6.0"
+motor-types = "^1.0.0b4"
 
 
 [tool.poetry.group.dev.dependencies]

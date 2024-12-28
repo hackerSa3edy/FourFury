@@ -1,6 +1,19 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
-app = FastAPI(title="FourFury")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        # Setup MongoDB connection
+        yield
+    finally:
+        # Close MongoDB connection
+        pass
+
+
+app = FastAPI(title="FourFury", lifespan=lifespan)
 
 
 @app.get("/")
