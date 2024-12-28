@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from ..db.client import MongoDBClient
 from .models import Game, StartGame
 
 router = APIRouter(prefix="/games", tags=["Games"])
@@ -12,13 +13,10 @@ async def start_new_game(start_game: StartGame) -> Game:
         "player_1": start_game.player_name,
         "player_2": start_game.player_name,
     }
+    client = MongoDBClient()
+    inserted_result = await client.insert(Game, data)
+    result = await client.get(Game, str(inserted_result.inserted_id))
 
-    app = get_current_app()
-    collection_name = "games"
-    collection = app.mongo_db.get_collection(collection_name)
-    insert_result = await collection.insert_one(data)
-
-    result = await collection.find_one({"_id": insert_result.inserted_id})
     return Game(**result)
 
 
