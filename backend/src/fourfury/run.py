@@ -4,15 +4,17 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 
 from .api.views import router as api_router
-from .db.utils import get_db
+from .db.utils import get_db_client
+from .settings import settings
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     try:
         # Setup MongoDB connection
-        mongo_db = get_db()
-        app.state.mongo_db = mongo_db
+        client = get_db_client()
+        db = client.get_database(settings.MONGO_DB)
+        app.state.mongo_db = db
         yield
     finally:
         # Close MongoDB connection
