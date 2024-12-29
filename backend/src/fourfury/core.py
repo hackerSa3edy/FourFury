@@ -80,3 +80,31 @@ def detect_winner(board: list[list[int]]) -> int | None:
             if board[i][j] != PlayerEnum.EMPTY and check_directions(i, j):
                 return board[i][j]
     return None
+
+
+def mark_winner(board: list[list[int]], winner: int) -> None:
+    def find_winner_cells(row: int, col: int) -> None:
+        for direction in DIRECTIONS:
+            line = []
+
+            i = 0
+            while (
+                direction.move_condition(row, col, i)
+                and direction.function(board, row, col, i) == winner
+            ):
+                line.append(direction.move_row_col(row, col, i))
+                i += 1
+
+            if len(line) >= 4:
+                winner_cells.extend(line)
+
+    # find winner cells
+    winner_cells: list[tuple[int, int]] = []
+    for i in range(N):
+        for j in range(M):
+            if board[i][j] == winner:
+                find_winner_cells(i, j)
+
+    # set winner
+    for row, col in set(winner_cells):
+        board[row][col] = PlayerEnum.WINNER
