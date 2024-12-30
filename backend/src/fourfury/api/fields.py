@@ -10,7 +10,6 @@ from pydantic_core import core_schema
 class PyObjectId:
     @classmethod
     def __get_pydantic_core_schema__(
-        # def __get_pydantic_core_schema__(  # type: ignore[misc]
         cls,
         _source_type: Any,
         _handler: Any,
@@ -37,7 +36,6 @@ class PyObjectId:
 
     @classmethod
     def validate(cls, value: Any) -> ObjectId:
-        # def validate(cls, value: Any) -> ObjectId:  # type: ignore[misc]
         if not ObjectId.is_valid(value):
             raise ValueError("Invalid ObjectId")
         return ObjectId(value)
