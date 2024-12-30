@@ -1,9 +1,10 @@
 import importlib
+from datetime import datetime, timezone
 from typing import Any, cast
 
 from fastapi import FastAPI
 from motor.motor_asyncio import AsyncIOMotorCollection, AsyncIOMotorDatabase
-from pymongo.results import DeleteResult, InsertOneResult
+from pymongo.results import DeleteResult, InsertOneResult, UpdateResult
 
 from ..api.fields import PyObjectId
 from ..api.models import MongoDBModel
@@ -58,6 +59,16 @@ class MongoDBClient:
     async def delete_all(self, model_cls: type[MongoDBModel]) -> DeleteResult:
         collection = self.get_collection(model_cls)
         return await collection.delete_many({})
+
+    async def update(
+        self,
+        model_cls: type[MongoDBModel],
+        id: PyObjectId,
+        data: dict[str, Any],
+    ) -> UpdateResult:
+        collection = self.get_collection(model_cls)
+        data |= {"updated_at": datetime.now(timezone.utc)}
+        return await collection.update_one({"_id": id}, {"$set": data})
 
 
 def get_current_app() -> FastAPI:

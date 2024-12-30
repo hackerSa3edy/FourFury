@@ -1,3 +1,5 @@
+from typing import Any
+
 from ..db.client import MongoDBClient
 from .fields import PyObjectId
 from .models import Game
@@ -30,3 +32,16 @@ async def delete_all_games() -> int:
     client = MongoDBClient()
     result = await client.delete_all(Game)
     return result.deleted_count
+
+
+async def join_new_game(game: Game, player_name: str) -> Game | None:
+    game_data = game.model_dump() | {"player_2": player_name}
+    return await update_game(game.id, game_data)
+
+
+async def update_game(
+    game_id: PyObjectId, game_data: dict[str, Any]
+) -> Game | None:
+    client = MongoDBClient()
+    await client.update(Game, game_id, game_data)
+    return await get_game_by_id(game_id)
