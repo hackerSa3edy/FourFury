@@ -23,5 +23,11 @@
 **/obj
 **/secrets.dev.yaml
 **/values.dev.yaml
+**/.pre-commit-config.yaml
+**/.env.docker
+**/.pytest_cache
+**/.ruff_cache
+**/mypyc_cache
+**/Makefile
 LICENSE
 README.md
