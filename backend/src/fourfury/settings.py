@@ -9,6 +9,7 @@ class AppSettings(BaseSettings):
 
     MONGO_DB: str
     MONGO_URL: str
+    ALLOWED_ORIGINS: list[str]
 
 
 settings = AppSettings()
