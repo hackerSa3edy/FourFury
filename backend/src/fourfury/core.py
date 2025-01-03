@@ -8,7 +8,7 @@ from .constants import TARGET, M, N, PlayerEnum
 class Direction:
     name: str
     condition: Callable[[int, int], bool]
-    function: Callable[[list[list[int]], int, int, int], int]
+    function: Callable[[list[list[PlayerEnum]], int, int, int], int]
     move_condition: Callable[[int, int, int], bool]
     move_row_col: Callable[[int, int, int], tuple[int, int]]
 
@@ -62,7 +62,7 @@ def is_valid_move(
     return row == N - 1 or board[row + 1][column] != PlayerEnum.EMPTY
 
 
-def detect_winner(board: list[list[int]]) -> int | None:
+def detect_winner(board: list[list[PlayerEnum]]) -> int | None:
     def check_directions(row: int, col: int) -> bool:
         value = board[row][col]
 
@@ -82,7 +82,7 @@ def detect_winner(board: list[list[int]]) -> int | None:
     return None
 
 
-def mark_winner(board: list[list[int]], winner: int) -> None:
+def mark_winner(board: list[list[PlayerEnum]], winner: int) -> None:
     def find_winner_cells(row: int, col: int) -> None:
         for direction in DIRECTIONS:
             line = []
@@ -108,3 +108,15 @@ def mark_winner(board: list[list[int]], winner: int) -> None:
     # set winner
     for row, col in set(winner_cells):
         board[row][col] = PlayerEnum.WINNER
+
+
+def calculate_row_by_col(
+    board: list[list[PlayerEnum]], column: int
+) -> int | None:
+    if column < 0 or column >= M:
+        return None
+
+    for row in range(N - 1, -1, -1):
+        if board[row][column] == PlayerEnum.EMPTY:
+            return row
+    return None
