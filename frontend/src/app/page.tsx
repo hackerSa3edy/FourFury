@@ -9,7 +9,7 @@ export default function StartGame() {
 
     async function handleStartGame() {
         setIsLoading(true);
-        const data = { player: playerName };
+        const data = { player_name: playerName };
         try {
             const response = await fetch(`${BACKEND_API_BASE_URL}/games/start/`, {
                 method: "POST",
