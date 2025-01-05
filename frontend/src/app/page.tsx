@@ -1,9 +1,11 @@
 "use client";
 
 import { BACKEND_API_BASE_URL } from "@/constants";
+import { useRouter } from "next/navigation"
 import { useState } from "react";
 
 export default function StartGame() {
+    const router = useRouter();
     const [playerName, setPlayerName] = useState("");
     const [isLoading, setIsLoading] = useState(false);
 
@@ -18,6 +20,7 @@ export default function StartGame() {
             });
             if (!response.ok) throw new Error();
             const responseData = await response.json();
+            router.push(`/games/${responseData.id}`);
             console.log(`success: ${responseData}`);
         } catch (err) {
             console.log("Something went wrong", err);
