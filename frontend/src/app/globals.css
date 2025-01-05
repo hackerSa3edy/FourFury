@@ -3,30 +3,134 @@
 @tailwind utilities;
 
 :root {
+  /* Core colors */
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Theme colors */
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --secondary: #6b7280;
+  --accent: #8b5cf6;
+
+  /* State colors */
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --error: #ef4444;
+
+  /* Animation settings */
+  --transition-speed: 0.2s;
+  --animation-speed: 6s;
+  --bounce-height: 0.5rem;
+
+  /* Performance optimizations */
+  --content-width: 100vw;
+  --content-height: 100vh;
+
+  /* Animation optimizations */
+  --safe-animation-duration: 200ms;
+  --safe-transition-duration: 150ms;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --primary: #3b82f6;
+    --secondary: #9ca3af;
+    --accent: #a855f7;
   }
 }
 
+/* Enhanced gradient animation */
 @keyframes gradient {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+     0%, 100% {
+        background-position: 0% 50%;
+        transform: translate3d(0,0,0);
+    }
+    50% {
+        background-position: 100% 50%;
+        transform: translate3d(0,0,0);
+    }
 }
 
 .animate-gradient {
-    background-size: 200% auto;
-    animation: gradient 4s linear infinite;
+    background-size: 200% 200%;
+    animation: gradient var(--animation-speed) linear infinite;
+    will-change: background-position; /* Optimize animation performance */
+    @media (prefers-reduced-motion: reduce) {
+        animation: none;
+    }
 }
 
+/* New animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(var(--bounce-height)); }
+}
+
+.animate-fadeIn {
+    animation: fadeIn 0.3s ease-out forwards;
+}
+
+.animate-bounce-slow {
+    animation: bounce 2s ease-in-out infinite;
+}
+
+/* Base styles */
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+    color: var(--foreground);
+    background: linear-gradient(
+        to bottom right,
+        var(--background),
+        color-mix(in srgb, var(--background) 90%, var(--primary))
+    );
+    font-family: system-ui, -apple-system, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    transition: background-color var(--transition-speed) ease-in-out;
+    min-height: 100vh;
+}
+
+/* Improved focus styles for accessibility */
+:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    transition: outline-offset var(--safe-transition-duration) ease;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.5);
+}
+
+/* Disable animations if user prefers reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* Apply smooth scrolling by default */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Glass morphism utility */
+.glass {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Performance optimizations */
+* {
+    backface-visibility: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }

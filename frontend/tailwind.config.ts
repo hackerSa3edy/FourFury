@@ -12,6 +12,20 @@ export default {
         background: "var(--background)",
         foreground: "var(--foreground)",
       },
+      animation: {
+        'gradient-x': 'gradient-x 15s ease infinite',
+        'shimmer': 'shimmer 2s linear infinite'
+      },
+      keyframes: {
+        'gradient-x': {
+          '0%, 100%': { 'background-position': '200% 0' },
+          '50%': { 'background-position': '0% 0' },
+        },
+        'shimmer': {
+          '0%': { 'background-position': '200% 0' },
+          '100%': { 'background-position': '-200% 0' },
+        }
+      }
     },
   },
   plugins: [],
