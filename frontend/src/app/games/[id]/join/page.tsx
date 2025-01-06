@@ -27,6 +27,10 @@ export default function JoinGame() {
 
                 // Redirect if game is already joined
                 if (data.player_2) {
+                    // Store game session data
+                    sessionStorage.setItem('gameId', data.id);
+                    sessionStorage.setItem('playerName', data.player_2);
+                    sessionStorage.setItem('playerNumber', '2');
                     router.replace(`/games/${id}`);
                     return;
                 }
