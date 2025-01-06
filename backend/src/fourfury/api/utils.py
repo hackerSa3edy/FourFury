@@ -15,14 +15,17 @@ from .exceptions import (
     NotAllPlayersJoinedError,
     WrongPlayerToMoveError,
 )
-from .models import Game, MoveInput
+from .models import Game, Move, MoveInput
 
 
 def make_move(game: Game, column: int) -> None:
     row = calculate_row_by_col(game.board, column)
     if row is None:
         raise MoveNotValidError()
-    game.board[row][column] = game.next_player_to_move_sign
+    move_value = game.next_player_to_move_sign
+    move = Move(row=row, column=column, value=move_value)
+    game.movees.append(move)
+    game.board[row][column] = move_value
     game.move_number += 1
 
     winner = detect_winner(game.board)

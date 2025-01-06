@@ -1,16 +1,24 @@
 "use client";
 
 import { BACKEND_API_BASE_URL, BACKEND_WS_BASE_URL } from "@/constants";
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, Dispatch, SetStateAction } from "react";
 import { useParams } from "next/navigation";
+import { FourFuryButton } from "@/components/buttons";
 
 import { getPlayerNameFromLocalStorage } from "@/utils/localStorageUtils";
+
+interface MovesData {
+    row: number;
+    column: number;
+    value: number;
+}
 
 export interface GameData {
     id: string;
     player_1: string;
     player_2: string | null;
     move_number: number;
+    movees: MovesData[];
     board: number[][];
     winner: number | null;
     next_player_to_move_username: string;
@@ -31,10 +39,65 @@ export default function PlayGame() {
         isConnected: false,
         error: null
     });
+    const [replayInProgress, setReplayInProgress] = useState(false);
 
-    const playerName = getPlayerNameFromLocalStorage(Array.isArray(id) ? id[0] : id || '')?.split(',')[1];
+    const handleReplayGame = useCallback(() => {
+        if (replayInProgress || !data?.movees) return;
+        setReplayInProgress(true);
 
-    // WebSocket connection logic with reconnection
+        // Store the original board state
+        const originalBoard = data.board.map(row => [...row]);
+
+        // init empty 6x7 board
+        const N = 6; const M = 7;
+        let newBoard = Array.from({ length: N }, () => Array(M).fill(0));
+        setData(curr => curr ? { ...curr, board: newBoard, move_number: 0 } : null);
+
+        setTimeout(() => {
+            data.movees.forEach((move, index) => {
+                setTimeout(() => {
+                    setData(prev => {
+                        if (!prev) return prev;
+                        newBoard[move.row][move.column] = move.value;
+
+                        // On last move, restore the original board to show winning cells
+                        if (index === data.movees.length - 1) {
+                            setReplayInProgress(false);
+                            return { ...prev, board: originalBoard, move_number: index + 1 };
+                        }
+                        return { ...prev, board: newBoard, move_number: index + 1 };
+                    });
+                }, index * 500);
+            });
+        }, 500);
+    }, [replayInProgress, data]);
+
+    const playerName = useMemo(() => {
+        return getPlayerNameFromLocalStorage(Array.isArray(id) ? id[0] : id || '')?.split(',')[1];
+    }, [id]);
+
+    // Separate data fetching effect
+    useEffect(() => {
+        const fetchGameData = async () => {
+            try {
+                const response = await fetch(`${BACKEND_API_BASE_URL}/games/${id}/`);
+                if (!response.ok) throw new Error("Failed to fetch game data");
+                const data = await response.json();
+                setData(data);
+                setLoading(false);
+            } catch (err) {
+                setWsStatus(prev => ({
+                    ...prev,
+                    error: "Failed to fetch game data"
+                }));
+                setLoading(false);
+            }
+        };
+
+        fetchGameData();
+    }, [id]);
+
+    // WebSocket connection effect
     useEffect(() => {
         let reconnectAttempts = 0;
         const maxReconnectAttempts = 5;
@@ -45,10 +108,7 @@ export default function PlayGame() {
 
             ws.addEventListener("open", () => {
                 setWsStatus({ isConnected: true, error: null });
-                reconnectAttempts = 0; // Reset attempts on successful connection
-
-                // Fetch initial game data
-                fetchGameData();
+                reconnectAttempts = 0;
             });
 
             ws.addEventListener("error", (error) => {
@@ -81,22 +141,6 @@ export default function PlayGame() {
             });
 
             setWs(ws);
-        };
-
-        const fetchGameData = async () => {
-            try {
-                const response = await fetch(`${BACKEND_API_BASE_URL}/games/${id}/`);
-                if (!response.ok) throw new Error("Failed to fetch game data");
-                const data = await response.json();
-                setData(data);
-                setLoading(false);
-            } catch (err) {
-                setWsStatus(prev => ({
-                    ...prev,
-                    error: "Failed to fetch game data"
-                }));
-                setLoading(false);
-            }
         };
 
         connectWebSocket();
@@ -172,7 +216,12 @@ export default function PlayGame() {
             mx-auto
         `}
         >
-            <GameInfo gameData={data} />
+            <GameInfo
+                gameData={data}
+                setGameData={setData}
+                replayInProgress={replayInProgress}
+                handleReplayGame={handleReplayGame}
+            />
             <GameStatus gameData={data} playerName={playerName} />
             <GameBoard gameData={data} ws={ws} playerName={playerName} />
         </div>
@@ -238,7 +287,7 @@ function WaitingPlayerToJoin({ id }: { id: string }) {
 }
 
 // Memoize static components
-const GameInfo = React.memo(({ gameData }: { gameData: GameData }) => {
+const GameInfo = React.memo(({ gameData, setGameData, replayInProgress, handleReplayGame }: { gameData: GameData; setGameData: Dispatch<SetStateAction<GameData | null>>; replayInProgress: boolean; handleReplayGame: () => void; }) => {
     let humanFinishedAt = null;
     if (gameData.finished_at) {
         humanFinishedAt = new Date(gameData.finished_at).toLocaleString();
@@ -270,7 +319,15 @@ const GameInfo = React.memo(({ gameData }: { gameData: GameData }) => {
                 <span className="text-yellow-400 dark:text-blue-500 drop-shadow-2xl"> {gameData.player_2}</span>
             </p>
             {humanFinishedAt && <p> Game finished at {humanFinishedAt}</p>}
-            {!humanFinishedAt && <p> Move #{gameData.move_number} </p>}
+            {!humanFinishedAt || !replayInProgress && <p> Move #{gameData.move_number} </p>}
+            {humanFinishedAt && (
+                <div className="mx-auto mt-2 w-1/2 sm:w-1/3">
+                    <FourFuryButton
+                        label="Replay Game"
+                        onClickHandler={handleReplayGame}
+                    />
+                </div>
+            )}
         </div>
     );
 });

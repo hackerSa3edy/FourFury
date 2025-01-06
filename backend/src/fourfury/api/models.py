@@ -31,6 +31,12 @@ class StartGame(BaseModel):
     player_name: str
 
 
+class Move(BaseModel):
+    row: NonNegativeInt
+    column: NonNegativeInt
+    value: PlayerEnum
+
+
 class Game(MongoDBModel):
     class Meta:
         collection_name = "games"
@@ -40,6 +46,7 @@ class Game(MongoDBModel):
 
     move_number: int = Field(default=1)
     board: list[list[PlayerEnum]] = Field(default=init_board())
+    movees: list[Move] = Field(default_factory=list)
     winner: PlayerEnum | None = Field(default=None)
 
     finished_at: datetime | None = Field(default=None)
