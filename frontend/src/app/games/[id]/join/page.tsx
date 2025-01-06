@@ -21,6 +21,13 @@ export default function JoinGame() {
     const [error, setError] = useState<string | null>(null);
     const [gameData, setGameData] = useState<GameData | null>(null);
 
+    const validateName = (name: string): string | undefined => {
+        if (name.length < 2) return 'Name must be at least 2 characters long';
+        if (name.length > 30) return 'Name must be less than 30 characters';
+        if (!/^[a-zA-Z0-9\s-_]+$/.test(name)) return 'Name contains invalid characters';
+        return undefined;
+    };
+
     useEffect(() => {
         async function fetchGameData() {
             try {
@@ -50,8 +57,11 @@ export default function JoinGame() {
     }, [id, router]);
 
     async function handleJoinGame() {
-        if (!playerName.trim()) {
-            setError('Please enter your name');
+        const trimmedName = playerName.trim();
+        const validationError = validateName(trimmedName);
+
+        if (validationError) {
+            setError(validationError);
             return;
         }
 
@@ -62,7 +72,7 @@ export default function JoinGame() {
             const response = await fetch(`${BACKEND_API_BASE_URL}/games/${id}/join/`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ player_name: playerName.trim() }),
+                body: JSON.stringify({ player_name: trimmedName }),
             });
 
             if (!response.ok) {
@@ -124,16 +134,11 @@ export default function JoinGame() {
                 </div>
 
                 <div className="mt-8 space-y-6">
-                    {error && (
-                        <div className="p-3 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm text-center animate-fadeIn">
-                            {error}
-                        </div>
-                    )}
                     <PlayerNameInput
                         label="Your name"
                         value={playerName}
                         onChangeHandler={setPlayerName}
-                        error={error && !playerName.trim() ? "Name is required" : undefined}
+                        error={error || undefined}
                         disabled={isJoining}
                     />
                     <div className="pt-2">

@@ -191,9 +191,6 @@ const StartGame = memo(function StartGame() {
                             onChangeHandler={handleNameChange}
                             error={formState.error}
                             disabled={formState.isSubmitting}
-                            maxLength={30}
-                            minLength={2}
-                            placeholder="Enter your game name"
                         />
                         <FourFuryButton
                             type="submit"
