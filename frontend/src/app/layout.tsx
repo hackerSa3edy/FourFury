@@ -1,6 +1,8 @@
 import "./globals.css";
 import { Inter } from "next/font/google";
 import type { Metadata, Viewport } from "next";
+import ThemeButton from "@/components/theme-button";
+import ThemeProviderWrapper from "./providers";
 
 // Optimize font loading
 const inter = Inter({
@@ -53,22 +55,29 @@ export default function RootLayout({ children }: Readonly<RootLayoutProps>) {
   return (
     <html
       lang="en"
-      className={`h-full ${inter.variable}`}
+      className={`h-full transition-colors duration-300 ease-in-out ${inter.variable}`}
       suppressHydrationWarning
     >
       <body
         className={`
-          min-h-full flex flex-col
-          bg-gradient-to-br from-blue-50 via-white to-purple-50
+          min-h-screen w-full flex flex-col
+          bg-gradient-to-bl from-blue-50 via-white to-fuchsia-100
           dark:from-gray-900 dark:via-gray-800 dark:to-slate-900
-          antialiased
-          motion-reduce:transform-none
-          font-sans
+          transition-colors duration-300
+          antialiased font-sans
+          overflow-x-hidden
         `}
       >
-        <main className="flex-1 flex items-center justify-center p-4">
-          {children}
-        </main>
+        <ThemeProviderWrapper>
+          <main className="flex-1 flex relative w-full">
+            <div className="fixed top-4 right-4 z-50">
+              <ThemeButton />
+            </div>
+            <div className="w-full flex-1 flex items-center justify-center">
+              {children}
+            </div>
+          </main>
+        </ThemeProviderWrapper>
       </body>
     </html>
   );

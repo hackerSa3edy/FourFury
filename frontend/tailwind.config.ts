@@ -13,8 +13,8 @@ export default {
         foreground: "var(--foreground)",
       },
       animation: {
-        'gradient-x': 'gradient-x 15s ease infinite',
-        'shimmer': 'shimmer 2s linear infinite'
+        'gradient-x': 'gradient-x 12s ease infinite',
+        'shimmer': 'shimmer 1.5s linear infinite',
       },
       keyframes: {
         'gradient-x': {
@@ -29,4 +29,5 @@ export default {
     },
   },
   plugins: [],
+  darkMode: "class",
 } satisfies Config;

@@ -95,9 +95,12 @@ export default function JoinGame() {
 
     if (isLoading) {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-blue-900">
-                <div className="p-8 rounded-2xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-xl">
-                    <div className="w-8 h-8 border-3 border-blue-500/80 border-t-transparent rounded-full animate-spin mx-auto" />
+            <div className="flex flex-1 min-h-full items-center justify-center bg-gradient-to-bl from-blue-50 to-blue-200 dark:from-gray-900 dark:to-blue-900">
+                <div className="relative p-8 rounded-xl bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm shadow-xl">
+                    <div className="w-12 h-12 border-4 border-blue-500 dark:border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                    <div className="text-lg font-medium text-slate-600 dark:text-slate-300 animate-pulse">
+                        Loading...
+                    </div>
                 </div>
             </div>
         );
@@ -105,8 +108,8 @@ export default function JoinGame() {
 
     if (!gameData) {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-blue-900">
-                <div className="p-8 rounded-2xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-xl">
+            <div className="flex flex-1 min-h-full items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+                <div className="p-8 rounded-xl bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm shadow-xl border border-red-100 dark:border-red-900">
                     <div className="text-red-500 dark:text-red-400 font-medium">Game not found</div>
                 </div>
             </div>
@@ -114,15 +117,15 @@ export default function JoinGame() {
     }
 
     return (
-        <div className="flex min-h-screen flex-col justify-center bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-blue-900">
-            <div className="mx-auto w-full max-w-md p-8 rounded-2xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-xl transform-gpu transition-all duration-300 hover:shadow-2xl">
+        <div className="flex flex-1 min-h-full items-center justify-center bg-gradient-to-br from-cyan-50 to-cyan-200 dark:from-gray-900 dark:to-cyan-900">
+            <div className="w-full sm:w-8/12 md:w-6/12 lg:w-4/12 mx-4 p-8 rounded-2xl bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm shadow-xl">
                 <div className="text-center space-y-4">
-                    <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
+                    <h2 className="text-4xl font-bold bg-gradient-to-r from-cyan-600 to-blue-600 dark:from-cyan-400 dark:to-blue-400 bg-clip-text text-transparent">
                         Join Game
                     </h2>
                     <div className="space-y-2">
                         <h6 className="text-lg text-gray-700 dark:text-gray-200">
-                            <span className="font-semibold text-cyan-600 dark:text-purple-400">
+                            <span className="font-semibold text-cyan-600 dark:text-blue-400">
                                 {gameData.player_1}{" "}
                             </span>
                             challenged your skills in Connect4

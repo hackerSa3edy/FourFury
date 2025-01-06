@@ -67,9 +67,9 @@ export default function PlayGame() {
                         }
                         return { ...prev, board: newBoard, move_number: index + 1 };
                     });
-                }, index * 500);
+                }, index * 450);
             });
-        }, 500);
+        }, 450);
     }, [replayInProgress, data]);
 
     const playerName = useMemo(() => {
@@ -155,7 +155,7 @@ export default function PlayGame() {
     // Loading and error states
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+            <div className="absolute inset-x-0 top-0 bottom-0 flex items-center justify-center bg-gradient-to-bl from-blue-50 to-blue-200 dark:from-gray-900 dark:to-blue-900 z-40">
                 <div className="relative p-8 rounded-xl bg-white dark:bg-slate-800 shadow-xl dark:shadow-slate-700/20">
                     <div className="w-12 h-12 border-4 border-blue-500 dark:border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
                     <div className="text-lg font-medium text-slate-600 dark:text-slate-300 animate-pulse">
@@ -168,8 +168,8 @@ export default function PlayGame() {
 
     if (wsStatus.error) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-                <div className="p-8 rounded-xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm shadow-xl border border-red-100 dark:border-red-900">
+            <div className="absolute inset-x-0 top-0 bottom-0 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 z-40">
+                <div className="p-8 rounded-xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm shadow-xl border border-red-100 dark:border-red-900 transform transition-all hover:scale-105">
                     <div className="flex items-center space-x-4">
                         <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                             <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -187,7 +187,7 @@ export default function PlayGame() {
     }
 
     if (!data || !playerName) return (
-        <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+        <div className="absolute inset-x-0 top-0 bottom-0 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 z-40">
             <div className="p-8 rounded-xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm shadow-xl border border-red-100 dark:border-red-900 transform transition-all hover:scale-105">
                 <div className="flex flex-col items-center space-y-4">
                     <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
@@ -208,13 +208,13 @@ export default function PlayGame() {
 
     return (
         <div
-            className={`
+            className="
             flex flex-1 flex-col min-h-full
-            py-4
-            px-8 md:px-10 lg:px-16 xl:px-18 3xl:px-12 4xl:px-32
-            w-full sm:w-9/12 md:w-9/12 lg:w-7/12 xl:w-6/12 2xl:w-5/12 3xl:w-5/12 4xl:w-5/12
-            mx-auto
-        `}
+            py-4 sm:py-6 md:py-8 lg:py-10
+            px-4 sm:px-8 md:px-12 xl:px-16
+            w-full sm:w-10/12 md:w-8/12 lg:w-6/12
+            mx-auto bg-gradient-to-br from-cyan-50 to-cyan-200 dark:from-gray-900 dark:to-cyan-900
+        "
         >
             <GameInfo
                 gameData={data}
@@ -319,7 +319,7 @@ const GameInfo = React.memo(({ gameData, setGameData, replayInProgress, handleRe
                 <span className="text-yellow-400 dark:text-blue-500 drop-shadow-2xl"> {gameData.player_2}</span>
             </p>
             {humanFinishedAt && <p> Game finished at {humanFinishedAt}</p>}
-            {!humanFinishedAt || !replayInProgress && <p> Move #{gameData.move_number} </p>}
+            <p> Move #{gameData.move_number} </p>
             {humanFinishedAt && (
                 <div className="mx-auto mt-2 w-1/2 sm:w-1/3">
                     <FourFuryButton
@@ -431,29 +431,30 @@ const GameBoardCell = React.memo(({ rowIndex, colIndex, cellValue, handleCellCli
     handleColumnHover: (colIndex: number) => void;
     handleColumnLeave: () => void;
 }) => {
-    let toHighlight = false;
+    const isHighlighted = useMemo(() => {
+        return !gameData.finished_at &&
+               gameData.next_player_to_move_username === playerName &&
+               highlightedColumn === colIndex &&
+               cellValue === 0;
+    }, [gameData.finished_at, gameData.next_player_to_move_username, playerName, highlightedColumn, colIndex, cellValue]);
 
-    if (gameData.board[rowIndex][colIndex] === 0 && !gameData.finished_at && gameData.next_player_to_move_username === playerName && highlightedColumn === colIndex) {
-        toHighlight = true;
-    }
     const cellStyle = useMemo(() => {
-        let style = `
+        const baseStyle = `
             h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 lg:h-14 lg:w-14 xl:h-16 xl:w-16 3xl:h-20 3xl:w-20
-            rounded-full border-2 transition duration-200 border-cyan-100 dark:border-violet-300
+            rounded-full border-2 transition-all duration-200
+            ${isHighlighted ? 'border-cyan-400 dark:border-cyan-500 shadow-lg' : 'border-white dark:border-violet-300'}
         `;
 
-        if (cellValue === 1) style += " bg-red-400 dark:bg-purple-500";
-        else if (cellValue === 2) style += " bg-yellow-300 dark:bg-blue-600";
-        else if (cellValue === 3) style += " bg-green-400 dark:bg-green-600";
+        if (cellValue === 1) return `${baseStyle} bg-red-400 dark:bg-purple-500`;
+        if (cellValue === 2) return `${baseStyle} bg-yellow-300 dark:bg-blue-600`;
+        if (cellValue === 3) return `${baseStyle} bg-green-400 dark:bg-green-600`;
 
-        toHighlight ? style += " dark:border-cyan-500": "";
-
-        return style;
-    }, [cellValue, toHighlight]);
+        return `${baseStyle} ${isHighlighted ? 'bg-cyan-800 dark:bg-cyan-900/30' : ''}`;
+    }, [cellValue, isHighlighted]);
 
     return (
         <td
-            key={`cell-${rowIndex}-${colIndex}`}
+            className="p-1"
             onMouseEnter={() => handleColumnHover(colIndex)}
             onMouseLeave={handleColumnLeave}
         >
@@ -461,7 +462,7 @@ const GameBoardCell = React.memo(({ rowIndex, colIndex, cellValue, handleCellCli
                 className={cellStyle}
                 onClick={() => handleCellClick(rowIndex, colIndex)}
                 aria-label={`Cell ${rowIndex}-${colIndex}`}
-                disabled={cellValue !== 0}
+                disabled={cellValue !== 0 || gameData.finished_at !== null}
             />
         </td>
     );

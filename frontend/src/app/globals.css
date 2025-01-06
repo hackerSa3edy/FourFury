@@ -11,7 +11,7 @@
   --primary: #2563eb;
   --primary-foreground: #ffffff;
   --secondary: #6b7280;
-  --accent: #8b5cf6;
+  --accent: #9333ea; /* slightly more vibrant accent */
 
   /* State colors */
   --success: #22c55e;
@@ -19,8 +19,8 @@
   --error: #ef4444;
 
   /* Animation settings */
-  --transition-speed: 0.2s;
-  --animation-speed: 6s;
+  --transition-speed: 0.3s; /* slightly increased for smoother hover/focus transitions */
+  --animation-speed: 5s;    /* faster gradient animation */
   --bounce-height: 0.5rem;
 
   /* Performance optimizations */
@@ -94,8 +94,25 @@ body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
-    transition: background-color var(--transition-speed) ease-in-out;
+    transition: background-color var(--transition-speed) ease-in-out,
+                color var(--transition-speed) ease-in-out;
     min-height: 100vh;
+}
+
+@media (max-width: 480px) {
+  body {
+    padding: 1rem;
+  }
+}
+
+@media (min-width: 1920px) {
+  body {
+    background: linear-gradient(
+      to bottom right,
+      var(--background),
+      color-mix(in srgb, var(--background) 80%, var(--primary))
+    );
+  }
 }
 
 /* Improved focus styles for accessibility */
@@ -124,8 +141,8 @@ html {
 /* Glass morphism utility */
 .glass {
     background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 /* Performance optimizations */
@@ -133,4 +150,12 @@ html {
     backface-visibility: hidden;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    transition: color var(--transition-speed) ease-in-out;
+}
+
+h1, h2, h3 {
+  color: var(--accent);
 }

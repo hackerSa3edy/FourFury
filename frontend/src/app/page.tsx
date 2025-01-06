@@ -3,9 +3,9 @@
 import { BACKEND_API_BASE_URL } from "@/constants";
 import { FourFuryButton } from "@/components/buttons";
 import { PlayerNameInput } from "@/components/input";
-import { useRouter } from "next/navigation"
+import { useRouter } from "next/navigation";
 import { memo, useCallback, useState, useTransition, useEffect } from 'react';
-import { setPlayerNameInLocalStorage  } from "@/utils/localStorageUtils";
+import { setPlayerNameInLocalStorage } from "@/utils/localStorageUtils";
 import { ErrorBoundary } from 'react-error-boundary';
 
 interface GameResponse {
@@ -58,12 +58,12 @@ const StartGame = memo(function StartGame() {
         sessionStorage.removeItem('playerNumber');
     }, []);
 
-    const validateName = (name: string): string | undefined => {
+    const validateName = useCallback((name: string): string | undefined => {
         if (name.length < 2) return 'Name must be at least 2 characters long';
         if (name.length > 30) return 'Name must be less than 30 characters';
         if (!/^[a-zA-Z0-9\s-_]+$/.test(name)) return 'Name contains invalid characters';
         return undefined;
-    };
+    }, []);
 
     const handleStartGame = useCallback(async () => {
         const now = Date.now();
@@ -166,13 +166,23 @@ const StartGame = memo(function StartGame() {
                 sessionStorage.clear();
             }}
         >
-            <div className="w-full px-4 sm:px-6 lg:px-8">
-                <div className="max-w-md mx-auto space-y-8 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-8 rounded-xl shadow-2xl transform transition-all duration-500 hover:scale-[1.02]">
-                    <div className="text-center">
-                        <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent animate-gradient">
+            <div className="w-full min-h-screen px-4 py-8 sm:px-6 md:px-8 lg:px-12
+                flex items-center justify-center">
+                <div className="w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg mx-auto
+                    bg-white/90 dark:bg-gray-800/90 backdrop-blur-lg
+                    p-4 sm:p-6 md:p-8 lg:p-10 rounded-2xl shadow-2xl
+                    transition-all duration-300 hover:shadow-3xl
+                    transform hover:-translate-y-1">
+                    <div className="text-center space-y-2 sm:space-y-3 md:space-y-4">
+                        <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold
+                            bg-gradient-to-r from-emerald-600 to-blue-600
+                            dark:from-emerald-400 dark:to-blue-400
+                            bg-clip-text text-transparent animate-gradient
+                            tracking-tight">
                             Four Fury
                         </h1>
-                        <h2 className="mt-2 text-xl font-medium text-gray-600 dark:text-gray-300">
+                        <h2 className="text-base sm:text-lg md:text-xl font-medium
+                            text-gray-600 dark:text-gray-300">
                             Start Your Adventure
                         </h2>
                     </div>
@@ -182,7 +192,7 @@ const StartGame = memo(function StartGame() {
                             e.preventDefault();
                             handleStartGame();
                         }}
-                        className="mt-8 space-y-6"
+                        className="mt-4 sm:mt-6 md:mt-8 space-y-3 sm:space-y-4 md:space-y-6"
                         noValidate
                     >
                         <PlayerNameInput
