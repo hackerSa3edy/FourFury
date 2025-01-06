@@ -4,6 +4,8 @@ import { BACKEND_API_BASE_URL, BACKEND_WS_BASE_URL } from "@/constants";
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams } from "next/navigation";
 
+import { getPlayerNameFromLocalStorage } from "@/utils/localStorageUtils";
+
 export interface GameData {
     id: string;
     player_1: string;
@@ -11,6 +13,7 @@ export interface GameData {
     move_number: number;
     board: number[][];
     winner: number | null;
+    next_player_to_move_username: string;
     finished_at: string | null;
 }
 
@@ -28,6 +31,8 @@ export default function PlayGame() {
         isConnected: false,
         error: null
     });
+
+    const playerName = getPlayerNameFromLocalStorage(Array.isArray(id) ? id[0] : id || '')?.split(',')[1];
 
     // WebSocket connection logic with reconnection
     useEffect(() => {
@@ -137,7 +142,7 @@ export default function PlayGame() {
         );
     }
 
-    if (!data) return (
+    if (!data || !playerName) return (
         <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
             <div className="p-8 rounded-xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm shadow-xl border border-red-100 dark:border-red-900 transform transition-all hover:scale-105">
                 <div className="flex flex-col items-center space-y-4">
@@ -168,8 +173,8 @@ export default function PlayGame() {
         `}
         >
             <GameInfo gameData={data} />
-            <GameStatus gameData={data} />
-            <GameBoard gameData={data} ws={ws} />
+            <GameStatus gameData={data} playerName={playerName} />
+            <GameBoard gameData={data} ws={ws} playerName={playerName} />
         </div>
     );
 }
@@ -270,7 +275,11 @@ const GameInfo = React.memo(({ gameData }: { gameData: GameData }) => {
     );
 });
 
-const GameBoard = React.memo(({ gameData, ws }: { gameData: GameData; ws: WebSocket | null }) => {
+const GameBoard = React.memo(({ gameData, ws, playerName }: { gameData: GameData; ws: WebSocket | null; playerName: string }) => {
+    const [highlightedColumn, setHighlightedColumn] = useState<number | null>(null);
+    const handleColumnHover = useCallback((colIndex: number) => setHighlightedColumn(colIndex), []);
+    const handleColumnLeave = useCallback(() => setHighlightedColumn(null), []);
+
     const handleCellClick = useCallback((i: number, j: number) => {
         if (!ws || ws.readyState !== WebSocket.OPEN || !gameData) {
             console.log('WebSocket not ready:', {
@@ -282,7 +291,7 @@ const GameBoard = React.memo(({ gameData, ws }: { gameData: GameData; ws: WebSoc
         }
 
         const currentPlayer = gameData.move_number % 2 === 0 ? gameData.player_2 : gameData.player_1;
-        const storedName = sessionStorage.getItem('playerName');
+        const storedName = playerName;
 
         console.log('Move attempt:', {
             currentPlayer,
@@ -339,6 +348,11 @@ const GameBoard = React.memo(({ gameData, ws }: { gameData: GameData; ws: WebSoc
                                     colIndex={colIndex}
                                     cellValue={cell}
                                     handleCellClick={handleCellClick}
+                                    playerName={playerName}
+                                    gameData={gameData}
+                                    highlightedColumn={highlightedColumn}
+                                    handleColumnHover={handleColumnHover}
+                                    handleColumnLeave={handleColumnLeave}
                                 />
                             ))}
                         </tr>
@@ -349,12 +363,22 @@ const GameBoard = React.memo(({ gameData, ws }: { gameData: GameData; ws: WebSoc
     );
 });
 
-const GameBoardCell = React.memo(({ rowIndex, colIndex, cellValue, handleCellClick }: {
+const GameBoardCell = React.memo(({ rowIndex, colIndex, cellValue, handleCellClick, playerName, gameData, highlightedColumn, handleColumnHover, handleColumnLeave }: {
     rowIndex: number;
     colIndex: number;
     cellValue: number;
     handleCellClick: (i: number, j: number) => void;
+    playerName: string;
+    gameData: GameData;
+    highlightedColumn: number | null;
+    handleColumnHover: (colIndex: number) => void;
+    handleColumnLeave: () => void;
 }) => {
+    let toHighlight = false;
+
+    if (gameData.board[rowIndex][colIndex] === 0 && !gameData.finished_at && gameData.next_player_to_move_username === playerName && highlightedColumn === colIndex) {
+        toHighlight = true;
+    }
     const cellStyle = useMemo(() => {
         let style = `
             h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 lg:h-14 lg:w-14 xl:h-16 xl:w-16 3xl:h-20 3xl:w-20
@@ -365,11 +389,17 @@ const GameBoardCell = React.memo(({ rowIndex, colIndex, cellValue, handleCellCli
         else if (cellValue === 2) style += " bg-yellow-300 dark:bg-blue-600";
         else if (cellValue === 3) style += " bg-green-400 dark:bg-green-600";
 
+        toHighlight ? style += " dark:border-cyan-500": "";
+
         return style;
-    }, [cellValue]);
+    }, [cellValue, toHighlight]);
 
     return (
-        <td>
+        <td
+            key={`cell-${rowIndex}-${colIndex}`}
+            onMouseEnter={() => handleColumnHover(colIndex)}
+            onMouseLeave={handleColumnLeave}
+        >
             <button
                 className={cellStyle}
                 onClick={() => handleCellClick(rowIndex, colIndex)}
@@ -380,9 +410,9 @@ const GameBoardCell = React.memo(({ rowIndex, colIndex, cellValue, handleCellCli
     );
 });
 
-const GameStatus = React.memo(({ gameData }: { gameData: GameData }) => {
+const GameStatus = React.memo(({ gameData, playerName }: { gameData: GameData; playerName: string }) => {
     const currentPlayer = gameData.move_number % 2 === 0 ? gameData.player_2 : gameData.player_1;
-    const storedName = sessionStorage.getItem('playerName');
+    const storedName = playerName;
     const isMyTurn = currentPlayer === storedName;
     console.log(`turn: ${isMyTurn}`, `stored name: ${storedName}`, `current player: ${currentPlayer}`);
 

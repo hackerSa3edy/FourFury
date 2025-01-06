@@ -7,6 +7,11 @@ import { useRouter, useParams } from "next/navigation";
 import { GameData } from "@/app/games/[id]/page";
 import { useEffect, useState } from "react";
 
+import {
+    getPlayerNameFromLocalStorage,
+    setPlayerNameInLocalStorage,
+} from "@/utils/localStorageUtils";
+
 export default function JoinGame() {
     const { id } = useParams();
     const router = useRouter();
@@ -24,13 +29,10 @@ export default function JoinGame() {
                     throw new Error('Failed to fetch game data');
                 }
                 const data = await response.json();
+                const storedPlayerName = getPlayerNameFromLocalStorage(data.id);
 
                 // Redirect if game is already joined
-                if (data.player_2) {
-                    // Store game session data
-                    sessionStorage.setItem('gameId', data.id);
-                    sessionStorage.setItem('playerName', data.player_2);
-                    sessionStorage.setItem('playerNumber', '2');
+                if (data.player_2 || storedPlayerName) {
                     router.replace(`/games/${id}`);
                     return;
                 }
@@ -70,9 +72,7 @@ export default function JoinGame() {
             const data = await response.json();
 
             // Store game session data
-            sessionStorage.setItem('gameId', data.id);
-            sessionStorage.setItem('playerName', playerName.trim());
-            sessionStorage.setItem('playerNumber', '2');
+            setPlayerNameInLocalStorage(data.id, playerName.trim(), 2);
 
             router.push(`/games/${data.id}`);
         } catch (err) {

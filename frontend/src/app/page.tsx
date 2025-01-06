@@ -5,6 +5,7 @@ import { FourFuryButton } from "@/components/buttons";
 import { PlayerNameInput } from "@/components/input";
 import { useRouter } from "next/navigation"
 import { memo, useCallback, useState, useTransition, useEffect } from 'react';
+import { setPlayerNameInLocalStorage  } from "@/utils/localStorageUtils";
 import { ErrorBoundary } from 'react-error-boundary';
 
 interface GameResponse {
@@ -120,10 +121,8 @@ const StartGame = memo(function StartGame() {
 
                     const data = (await response.json()) as GameResponse;
 
-                    // Store game session data
-                    sessionStorage.setItem('gameId', data.id);
-                    sessionStorage.setItem('playerName', trimmedName);
-                    sessionStorage.setItem('playerNumber', '1');
+                    // Store game session data in local storage
+                    setPlayerNameInLocalStorage(data.id, trimmedName, 1);
 
                     router.push(`/games/${data.id}`);
                 } catch (error) {
