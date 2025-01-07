@@ -65,6 +65,7 @@ class Game(MongoDBModel):
 
 
 class MoveInput(BaseModel):
+    game_id: PyObjectId
     player: str
     column: NonNegativeInt
 

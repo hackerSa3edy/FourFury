@@ -1,9 +1,10 @@
 "use client";
 
-import { BACKEND_API_BASE_URL, BACKEND_WS_BASE_URL } from "@/constants";
+import { BACKEND_API_BASE_URL, SOCKETIO_BASE_URL } from "@/constants";
 import React, { useEffect, useState, useCallback, useMemo, Dispatch, SetStateAction } from "react";
 import { useParams } from "next/navigation";
 import { FourFuryButton } from "@/components/buttons";
+import { io, Socket } from "socket.io-client";
 
 import { getPlayerNameFromLocalStorage } from "@/utils/localStorageUtils";
 
@@ -25,7 +26,7 @@ export interface GameData {
     finished_at: string | null;
 }
 
-interface WebSocketStatus {
+interface SocketStatus {
     isConnected: boolean;
     error: string | null;
 }
@@ -34,8 +35,8 @@ export default function PlayGame() {
     const { id } = useParams();
     const [data, setData] = useState<GameData | null>(null);
     const [isLoading, setLoading] = useState(true);
-    const [ws, setWs] = useState<WebSocket | null>(null);
-    const [wsStatus, setWsStatus] = useState<WebSocketStatus>({
+    const [socket, setSocket] = useState<Socket | null>(null);
+    const [socketStatus, setSocketStatus] = useState<SocketStatus>({
         isConnected: false,
         error: null
     });
@@ -86,7 +87,7 @@ export default function PlayGame() {
                 setData(data);
                 setLoading(false);
             } catch (err) {
-                setWsStatus(prev => ({
+                setSocketStatus(prev => ({
                     ...prev,
                     error: "Failed to fetch game data"
                 }));
@@ -97,60 +98,66 @@ export default function PlayGame() {
         fetchGameData();
     }, [id]);
 
-    // WebSocket connection effect
+    // Socket.IO connection effect
     useEffect(() => {
-        let reconnectAttempts = 0;
-        const maxReconnectAttempts = 5;
-        let reconnectTimeout: NodeJS.Timeout;
+        const socket = io(SOCKETIO_BASE_URL, {
+            transports: ['websocket'],
+            autoConnect: true,
+            reconnection: true,
+            reconnectionAttempts: 5,
+            reconnectionDelay: 2000,
+        });
 
-        const connectWebSocket = () => {
-            const ws = new WebSocket(`${BACKEND_WS_BASE_URL}/games/ws/${id}/`);
-
-            ws.addEventListener("open", () => {
-                setWsStatus({ isConnected: true, error: null });
-                reconnectAttempts = 0;
-            });
-
-            ws.addEventListener("error", (error) => {
-                setWsStatus(prev => ({
-                    ...prev,
-                    error: "WebSocket connection error"
-                }));
-            });
-
-            ws.addEventListener("close", () => {
-                setWsStatus(prev => ({
-                    ...prev,
-                    isConnected: false
-                }));
-
-                // Attempt to reconnect
-                if (reconnectAttempts < maxReconnectAttempts) {
-                    reconnectAttempts++;
-                    reconnectTimeout = setTimeout(connectWebSocket, 2000 * reconnectAttempts);
-                }
-            });
-
-            ws.addEventListener("message", (event) => {
-                try {
-                    const data = JSON.parse(JSON.parse(event.data));
-                    setData(data);
-                } catch (err) {
-                    console.error("Error parsing WebSocket message:", err);
-                }
-            });
-
-            setWs(ws);
+        const handleConnect = () => {
+            setSocketStatus({ isConnected: true, error: null });
+            // Only join if we have valid game data
+            if (data?.id) {
+                socket.emit('join_game', data.id);
+            }
         };
 
-        connectWebSocket();
+        const handleDisconnect = () => {
+            setSocketStatus(prev => ({
+                ...prev,
+                isConnected: false
+            }));
+        };
+
+        const handleGameUpdate = (updatedGameData: string) => {
+            try {
+                const updatedGame: GameData = JSON.parse(updatedGameData);
+                setData(updatedGame);
+            } catch (error) {
+                console.error('Error parsing game update:', error);
+            }
+        };
+
+        socket.on('connect', handleConnect);
+        socket.on('disconnect', handleDisconnect);
+        socket.on('game_update', handleGameUpdate);
+        socket.on('connect_error', (error) => {
+            console.error('Socket connection error:', error);
+            setSocketStatus(prev => ({
+                ...prev,
+                error: "Failed to connect to game server"
+            }));
+        });
+
+        setSocket(socket);
 
         // Cleanup
         return () => {
-            clearTimeout(reconnectTimeout);
-            if (ws) ws.close();
+            if (socket) {
+                socket.off('connect', handleConnect);
+                socket.off('disconnect', handleDisconnect);
+                socket.off('game_update', handleGameUpdate);
+                if (data?.id) {
+                    socket.emit('leave_game', data.id);
+                }
+                socket.close();
+            }
         };
-    }, [id]);
+    }, [data?.id]);
 
     // Loading and error states
     if (isLoading) {
@@ -166,7 +173,7 @@ export default function PlayGame() {
         );
     }
 
-    if (wsStatus.error) {
+    if (socketStatus.error) {
         return (
             <div className="absolute inset-x-0 top-0 bottom-0 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 z-40">
                 <div className="p-8 rounded-xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm shadow-xl border border-red-100 dark:border-red-900 transform transition-all hover:scale-105">
@@ -178,7 +185,7 @@ export default function PlayGame() {
                         </div>
                         <div>
                             <h3 className="text-lg font-semibold text-red-600 dark:text-red-400">Connection Error</h3>
-                            <p className="text-red-500 dark:text-red-300">{wsStatus.error}. Please try refreshing the page.</p>
+                            <p className="text-red-500 dark:text-red-300">{socketStatus.error}. Please try refreshing the page.</p>
                         </div>
                     </div>
                 </div>
@@ -204,7 +211,7 @@ export default function PlayGame() {
         </div>
     );
 
-    if (!data.player_2) return <WaitingPlayerToJoin id={ data.id } />;
+    if (!data.player_2 && data.id) return <WaitingPlayerToJoin id={ data.id } />;
 
     return (
         <div
@@ -223,7 +230,7 @@ export default function PlayGame() {
                 handleReplayGame={handleReplayGame}
             />
             <GameStatus gameData={data} playerName={playerName} />
-            <GameBoard gameData={data} ws={ws} playerName={playerName} />
+            <GameBoard gameData={data} socket={socket} playerName={playerName} />
         </div>
     );
 }
@@ -332,16 +339,16 @@ const GameInfo = React.memo(({ gameData, setGameData, replayInProgress, handleRe
     );
 });
 
-const GameBoard = React.memo(({ gameData, ws, playerName }: { gameData: GameData; ws: WebSocket | null; playerName: string }) => {
+const GameBoard = React.memo(({ gameData, socket, playerName }: { gameData: GameData; socket: Socket | null; playerName: string }) => {
     const [highlightedColumn, setHighlightedColumn] = useState<number | null>(null);
     const handleColumnHover = useCallback((colIndex: number) => setHighlightedColumn(colIndex), []);
     const handleColumnLeave = useCallback(() => setHighlightedColumn(null), []);
 
     const handleCellClick = useCallback((i: number, j: number) => {
-        if (!ws || ws.readyState !== WebSocket.OPEN || !gameData) {
-            console.log('WebSocket not ready:', {
-                wsExists: !!ws,
-                wsState: ws?.readyState,
+        if (!socket || !socket.connected || !gameData) {
+            console.log('Socket not ready:', {
+                socketExists: !!socket,
+                socketConnected: socket?.connected,
                 gameDataExists: !!gameData
             });
             return;
@@ -365,19 +372,18 @@ const GameBoard = React.memo(({ gameData, ws, playerName }: { gameData: GameData
         }
 
         const payload = {
-            type: 'move',  // Add message type
+            game_id: gameData.id,
             player: storedName,
-            column: j,
-            moveNumber: gameData.move_number
+            column: j
         };
 
         try {
             console.log('Sending move:', payload);
-            ws.send(JSON.stringify(payload));
+            socket.emit('move', payload);
         } catch (error) {
             console.error('Error sending move:', error);
         }
-    }, [ws, gameData]);
+    }, [socket, gameData]);
 
     return (
         <div
@@ -438,10 +444,14 @@ const GameBoardCell = React.memo(({ rowIndex, colIndex, cellValue, handleCellCli
                cellValue === 0;
     }, [gameData.finished_at, gameData.next_player_to_move_username, playerName, highlightedColumn, colIndex, cellValue]);
 
+    const isPlayable = useMemo(() => {
+        return cellValue === 0 && !gameData.finished_at && gameData.next_player_to_move_username === playerName;
+    }, [cellValue, gameData.finished_at, gameData.next_player_to_move_username, playerName]);
+
     const cellStyle = useMemo(() => {
         const baseStyle = `
             h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 lg:h-14 lg:w-14 xl:h-16 xl:w-16 3xl:h-20 3xl:w-20
-            rounded-full border-2 transition-all duration-200
+            rounded-full border-2 transition-all duration-200 cursor-${isPlayable ? 'pointer' : 'not-allowed'}
             ${isHighlighted ? 'border-cyan-400 dark:border-cyan-500 shadow-lg' : 'border-white dark:border-violet-300'}
         `;
 
@@ -450,19 +460,19 @@ const GameBoardCell = React.memo(({ rowIndex, colIndex, cellValue, handleCellCli
         if (cellValue === 3) return `${baseStyle} bg-green-400 dark:bg-green-600`;
 
         return `${baseStyle} ${isHighlighted ? 'bg-cyan-800 dark:bg-cyan-900/30' : ''}`;
-    }, [cellValue, isHighlighted]);
+    }, [cellValue, isHighlighted, isPlayable]);
 
     return (
         <td
             className="p-1"
-            onMouseEnter={() => handleColumnHover(colIndex)}
+            onMouseEnter={() => isPlayable && handleColumnHover(colIndex)}
             onMouseLeave={handleColumnLeave}
         >
             <button
                 className={cellStyle}
-                onClick={() => handleCellClick(rowIndex, colIndex)}
+                onClick={() => isPlayable && handleCellClick(rowIndex, colIndex)}
                 aria-label={`Cell ${rowIndex}-${colIndex}`}
-                disabled={cellValue !== 0 || gameData.finished_at !== null}
+                disabled={!isPlayable}
             />
         </td>
     );

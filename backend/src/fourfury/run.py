@@ -4,6 +4,7 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from .api.socketio_manager import socket_app
 from .api.views import router as api_router
 from .db.utils import get_db_client
 from .settings import settings
@@ -27,13 +28,14 @@ app = FastAPI(title="FourFury", lifespan=lifespan)
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,  # Add your frontend URLs
+    allow_origins=settings.ALLOWED_ORIGINS,  # Ensure frontend URLs are included
     allow_credentials=True,
     allow_methods=["*"],  # Allows all methods
     allow_headers=["*"],  # Allows all headers
 )
 
 app.include_router(api_router)
+app.mount("/socket.io", socket_app, name="socketio")
 
 
 @app.get("/")
