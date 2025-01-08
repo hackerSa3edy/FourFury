@@ -1,13 +1,15 @@
 import logging
 from collections import defaultdict
 from typing import Any, cast
+import asyncio
 
 import socketio  # type: ignore
 
 from ..settings import settings
 from .crud import get_game_by_id, update_game
-from .models import Game, MoveInput, get_model_safe
+from .models import Game, MoveInput, get_model_safe, GameMode
 from .utils import make_move, validate
+from ..core import AIEngine, calculate_row_by_col
 
 sio = socketio.AsyncServer(
     async_mode="asgi", cors_allowed_origins=settings.ALLOWED_ORIGINS
@@ -82,6 +84,29 @@ async def move(sid: str, payload: dict[str, Any]) -> None:
     game = cast(Game, game)
     make_move(game, move.column)
 
+    # Broadcast the player's move immediately
     updated_game = cast(Game, await update_game(game.id, game.model_dump()))
-
     await game_manager.broadcast_game(updated_game)
+
+    # Handle AI move if in AI mode
+    if game.mode == GameMode.AI and not game.finished_at:
+        try:
+            # Add delay before AI move
+            await asyncio.sleep(0.5)
+
+            ai = AIEngine(game.ai_difficulty or 3)
+            ai_move = ai.get_best_move(game.board)
+            make_move(game, ai_move)
+
+            # Update and broadcast AI move
+            updated_game = cast(Game, await update_game(game.id, game.model_dump()))
+            await game_manager.broadcast_game(updated_game)
+        except Exception as e:
+            logger.error(f"AI move error: {e}")
+            # Fallback to random valid move
+            import random
+            valid_cols = [col for col in range(7) if calculate_row_by_col(game.board, col) is not None]
+            if valid_cols:
+                make_move(game, random.choice(valid_cols))
+                updated_game = cast(Game, await update_game(game.id, game.model_dump()))
+                await game_manager.broadcast_game(updated_game)

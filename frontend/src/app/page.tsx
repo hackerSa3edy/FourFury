@@ -1,10 +1,10 @@
 "use client";
 
+import React, { useState, useCallback, useEffect, memo, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { BACKEND_API_BASE_URL } from "@/constants";
 import { FourFuryButton } from "@/components/buttons";
 import { PlayerNameInput } from "@/components/input";
-import { useRouter } from "next/navigation";
-import { memo, useCallback, useState, useTransition, useEffect } from 'react';
 import { setPlayerNameInLocalStorage } from "@/utils/localStorageUtils";
 import { ErrorBoundary } from 'react-error-boundary';
 
@@ -50,6 +50,8 @@ const StartGame = memo(function StartGame() {
     });
     const [isPending, startTransition] = useTransition();
     const [lastSubmissionTime, setLastSubmissionTime] = useState<number>(0);
+    const [mode, setMode] = useState<"human"|"ai">("human");
+    const [aiDifficulty, setAiDifficulty] = useState(3);
 
     // Cleanup session storage on component mount
     useEffect(() => {
@@ -107,6 +109,8 @@ const StartGame = memo(function StartGame() {
                         },
                         body: JSON.stringify({
                             player_name: trimmedName,
+                            mode,
+                            ai_difficulty: mode === "ai" ? aiDifficulty : undefined,
                             timestamp: new Date().toISOString()
                         }),
                         signal: controller.signal
@@ -148,7 +152,7 @@ const StartGame = memo(function StartGame() {
                 isSubmitting: false
             }));
         }
-    }, [formState.playerName, router, lastSubmissionTime]);
+    }, [formState.playerName, router, lastSubmissionTime, mode, aiDifficulty]);
 
     const handleNameChange = useCallback((value: string) => {
         setFormState(prev => ({
@@ -202,6 +206,108 @@ const StartGame = memo(function StartGame() {
                             error={formState.error}
                             disabled={formState.isSubmitting}
                         />
+
+                        <div className="space-y-4">
+                            <div className="text-center relative">
+                                <h3 className="text-lg sm:text-xl font-semibold mb-3
+                                    bg-gradient-to-r from-emerald-600 to-blue-600
+                                    dark:from-emerald-400 dark:to-blue-400
+                                    bg-clip-text text-transparent">
+                                    Choose Your Battle
+                                </h3>
+                                <div className="relative">
+                                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/10 to-blue-600/10
+                                        dark:from-emerald-400/5 dark:to-blue-400/5 rounded-lg transform -skew-y-1"></div>
+                                    <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400
+                                        py-2 px-4 relative z-10 leading-relaxed">
+                                        Select your preferred way to play
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-center gap-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setMode("human")}
+                                    className={`px-6 py-3 rounded-lg transition-all duration-300 relative group
+                                        ${mode === "human"
+                                            ? "bg-gradient-to-r from-emerald-600 to-blue-600 text-white transform scale-105"
+                                            : "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
+                                        }`}
+                                >
+                                    <div className="flex flex-col items-center">
+                                        <span className="text-xl mb-1">👥</span>
+                                        <span className="font-medium">Human</span>
+                                    </div>
+                                    <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 w-max
+                                        pointer-events-none">
+                                        <div className="bg-gray-800 dark:bg-gray-900 text-white px-3 py-1 rounded-md
+                                            text-xs sm:text-sm opacity-0 group-hover:opacity-100 transition-all duration-300
+                                            shadow-lg">
+                                            <div className="absolute -top-2 left-1/2 transform -translate-x-1/2
+                                                border-4 border-transparent border-b-gray-800 dark:border-b-gray-900"></div>
+                                            Local Multiplayer Battle 🤝
+                                        </div>
+                                    </div>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setMode("ai")}
+                                    className={`px-6 py-3 rounded-lg transition-all duration-300 relative group
+                                        ${mode === "ai"
+                                            ? "bg-gradient-to-r from-emerald-600 to-blue-600 text-white transform scale-105"
+                                            : "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
+                                        }`}
+                                >
+                                    <div className="flex flex-col items-center">
+                                        <span className="text-xl mb-1">🤖</span>
+                                        <span className="font-medium">AI</span>
+                                    </div>
+                                    <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 w-max
+                                        pointer-events-none">
+                                        <div className="bg-gray-800 dark:bg-gray-900 text-white px-3 py-1 rounded-md
+                                            text-xs sm:text-sm opacity-0 group-hover:opacity-100 transition-all duration-300
+                                            shadow-lg">
+                                            <div className="absolute -top-2 left-1/2 transform -translate-x-1/2
+                                                border-4 border-transparent border-b-gray-800 dark:border-b-gray-900"></div>
+                                            Test Your Skills vs AI 🎯
+                                        </div>
+                                    </div>
+                                </button>
+                            </div>
+
+                            {mode === "ai" && (
+                                <div className="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg">
+                                    <label className="block text-center mb-3">
+                                        <span className="text-sm font-medium">AI Difficulty</span>
+                                    </label>
+                                    <div className="flex justify-center gap-2">
+                                        {[1, 2, 3, 4, 5].map((level) => (
+                                            <button
+                                                key={level}
+                                                type="button"
+                                                onClick={() => setAiDifficulty(level)}
+                                                className={`w-10 h-10 rounded-full transition-all duration-300
+                                                    ${aiDifficulty === level
+                                                        ? "bg-gradient-to-r from-emerald-600 to-blue-600 text-white transform scale-110"
+                                                        : "bg-white dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500"
+                                                    }`}
+                                            >
+                                                {level}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <div className="text-center mt-2 text-sm text-gray-600 dark:text-gray-300">
+                                        {aiDifficulty === 1 && "Beginner"}
+                                        {aiDifficulty === 2 && "Easy"}
+                                        {aiDifficulty === 3 && "Medium"}
+                                        {aiDifficulty === 4 && "Hard"}
+                                        {aiDifficulty === 5 && "Expert"}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
                         <FourFuryButton
                             type="submit"
                             label={formState.isSubmitting ? "Starting Game..." : "Start Game"}

@@ -14,7 +14,7 @@ from .crud import (
     start_new_game,
 )
 from .fields import PyObjectId
-from .models import Game, StartGame
+from .models import Game, StartGame, GameMode
 from .socketio_manager import game_manager
 
 logger = logging.getLogger(__name__)
@@ -23,12 +23,21 @@ router = APIRouter(prefix="/games", tags=["Games"])
 
 @router.post("/start/", response_model=Game)
 async def start_game(start_game: StartGame) -> Game:
-    game = await start_new_game(start_game.player_name)
+    game = await start_new_game(
+        start_game.player_name,
+        start_game.mode,
+        start_game.ai_difficulty if start_game.mode == GameMode.AI else None
+    )
     if game is None:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to start game",
         )
+
+    # If AI mode, automatically set player 2 as "AI"
+    if game.mode == GameMode.AI:
+        game = await join_new_game(game, "AI")
+
     return game
 
 

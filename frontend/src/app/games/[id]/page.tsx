@@ -24,6 +24,8 @@ export interface GameData {
     winner: number | null;
     next_player_to_move_username: string;
     finished_at: string | null;
+    mode: string;
+    ai_difficulty: number | null;
 }
 
 interface SocketStatus {

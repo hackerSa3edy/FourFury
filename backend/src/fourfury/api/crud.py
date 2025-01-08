@@ -3,12 +3,20 @@ from typing import Any
 from ..cache import invalidate_cache, redis_cache
 from ..db.client import MongoDBClient
 from .fields import PyObjectId
-from .models import Game
+from .models import Game, GameMode
 from .serializers import deserialize_game, serialize_game
 
 
-async def start_new_game(player_name: str) -> Game | None:
-    game_data = {"player_1": player_name}
+async def start_new_game(
+    player_name: str,
+    mode: GameMode = GameMode.HUMAN,
+    ai_difficulty: int | None = None
+) -> Game | None:
+    game_data = {
+        "player_1": player_name,
+        "mode": mode,
+        "ai_difficulty": ai_difficulty
+    }
     client = MongoDBClient()
     inserted_result = await client.insert(Game, game_data)
 

@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from typing import Any
+from enum import Enum
 
 from pydantic import (
     BaseModel,
@@ -33,8 +34,15 @@ class MongoDBModel(BaseModel):
         return cls.Meta.indexes
 
 
+class GameMode(str, Enum):
+    HUMAN = "human"
+    AI = "ai"
+
+
 class StartGame(BaseModel):
     player_name: str
+    mode: GameMode = GameMode.HUMAN
+    ai_difficulty: int | None = Field(default=3, ge=1, le=5)
 
 
 class Move(BaseModel):
@@ -62,6 +70,9 @@ class Game(MongoDBModel):
     winner: PlayerEnum | None = Field(default=None)
 
     finished_at: datetime | None = Field(default=None)
+
+    mode: GameMode = Field(default=GameMode.HUMAN)
+    ai_difficulty: int | None = Field(default=None)
 
     @computed_field
     def next_player_to_move_username(self) -> str | None:
