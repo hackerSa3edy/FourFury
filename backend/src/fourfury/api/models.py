@@ -8,6 +8,7 @@ from pydantic import (
     ValidationError,
     computed_field,
 )
+from pymongo import ASCENDING, IndexModel
 
 from ..constants import PlayerEnum
 from ..core import init_board
@@ -17,6 +18,7 @@ from .fields import PyObjectId
 class MongoDBModel(BaseModel):
     class Meta:
         collection_name: str
+        indexes: list[IndexModel] = []
 
     id: PyObjectId
     created_at: datetime = Field(default=datetime.now(timezone.utc))
@@ -25,6 +27,10 @@ class MongoDBModel(BaseModel):
     @classmethod
     def get_collection_name(cls) -> str:
         return cls.Meta.collection_name
+
+    @classmethod
+    def get_indexes(cls) -> list[IndexModel]:
+        return cls.Meta.indexes
 
 
 class StartGame(BaseModel):
@@ -40,6 +46,12 @@ class Move(BaseModel):
 class Game(MongoDBModel):
     class Meta:
         collection_name = "games"
+        indexes = [
+            IndexModel([("player_1", ASCENDING)]),
+            IndexModel([("player_2", ASCENDING)]),
+            IndexModel([("created_at", ASCENDING)]),
+            IndexModel([("updated_at", ASCENDING)]),
+        ]
 
     player_1: str = Field(max_length=100)
     player_2: str | None = Field(max_length=100, default=None)

@@ -8,6 +8,7 @@ services:
             - 8001:8000
         depends_on:
             - db
+            - redis
         env_file:
             - "./backend/.env.docker"
     db:
@@ -18,5 +19,14 @@ services:
         ports:
             - "27018:27017"
 
+    redis:
+        image: redis:latest
+        container_name: fourfury-redis
+        ports:
+            - "6379:6379"
+        volumes:
+            - "redis_data:/data"
+
 volumes:
     mongodb_data:
+    redis_data:

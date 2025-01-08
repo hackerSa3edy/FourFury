@@ -21,7 +21,7 @@ class MongoDBClient:
             cls.__instance.mongo_db = app.state.mongo_db
         return cls.__instance
 
-    def get_collection(
+    async def get_collection(
         self, model_cls: type[MongoDBModel]
     ) -> AsyncIOMotorCollection:
         collection_name = model_cls.get_collection_name()
@@ -30,13 +30,13 @@ class MongoDBClient:
     async def insert(
         self, model_cls: type[MongoDBModel], data: dict[str, Any]
     ) -> InsertOneResult:
-        collection = self.get_collection(model_cls)
+        collection = await self.get_collection(model_cls)
         return await collection.insert_one(data)
 
     async def get(
         self, model_cls: type[MongoDBModel], id: PyObjectId
     ) -> dict[str, Any] | None:
-        collection = self.get_collection(model_cls)
+        collection = await self.get_collection(model_cls)
         result = await collection.find_one({"_id": id})
         if result is None:
             return None
@@ -47,7 +47,7 @@ class MongoDBClient:
     async def list(
         self, model_cls: type[MongoDBModel]
     ) -> list[dict[str, Any]]:
-        collection = self.get_collection(model_cls)
+        collection = await self.get_collection(model_cls)
         results = collection.find({})
         container = []
         async for result in results:
@@ -57,7 +57,7 @@ class MongoDBClient:
         return container
 
     async def delete_all(self, model_cls: type[MongoDBModel]) -> DeleteResult:
-        collection = self.get_collection(model_cls)
+        collection = await self.get_collection(model_cls)
         return await collection.delete_many({})
 
     async def update(
@@ -66,9 +66,22 @@ class MongoDBClient:
         id: PyObjectId,
         data: dict[str, Any],
     ) -> UpdateResult:
-        collection = self.get_collection(model_cls)
+        collection = await self.get_collection(model_cls)
         data |= {"updated_at": datetime.now(timezone.utc)}
         return await collection.update_one({"_id": id}, {"$set": data})
+
+    async def init_indexes(self, model_cls: type[MongoDBModel]) -> None:
+        """Initialize indexes for the given model."""
+        indexes = model_cls.get_indexes()
+        if indexes:
+            collection = await self.get_collection(model_cls)
+            try:
+                await collection.create_indexes(indexes)
+            except Exception as e:
+                # Log the error but don't crash the application
+                print(
+                    f"Error creating indexes for {model_cls.get_collection_name()}: {e}"
+                )
 
 
 def get_current_app() -> FastAPI:
