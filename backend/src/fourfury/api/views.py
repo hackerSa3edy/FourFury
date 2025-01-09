@@ -23,6 +23,12 @@ router = APIRouter(prefix="/games", tags=["Games"])
 
 @router.post("/start/", response_model=Game)
 async def start_game(start_game: StartGame) -> Game:
+    if start_game.mode == GameMode.ONLINE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Online mode is not available through this endpoint",
+        )
+
     game = await start_new_game(
         start_game.player_name,
         start_game.mode,
@@ -68,6 +74,11 @@ async def join_game(game_id: PyObjectId, player_data: StartGame) -> Game:
     if game is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Game not found"
+        )
+    if game.mode == GameMode.ONLINE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot join online games through this endpoint",
         )
     if game.player_2 is not None:
         raise HTTPException(

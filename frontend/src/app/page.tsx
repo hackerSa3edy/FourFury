@@ -2,11 +2,12 @@
 
 import React, { useState, useCallback, useEffect, memo, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { BACKEND_API_BASE_URL } from "@/constants";
+import { BACKEND_API_BASE_URL, SOCKETIO_BASE_URL } from "@/constants";
 import { FourFuryButton } from "@/components/buttons";
 import { PlayerNameInput } from "@/components/input";
 import { setPlayerNameInLocalStorage } from "@/utils/localStorageUtils";
 import { ErrorBoundary } from 'react-error-boundary';
+import io, { Socket } from 'socket.io-client';
 
 interface GameResponse {
     id: string;
@@ -17,6 +18,7 @@ interface FormState {
     playerName: string;
     error: string | undefined;
     isSubmitting: boolean;
+    isMatchmaking: boolean;
 }
 
 interface ErrorFallbackProps {
@@ -41,17 +43,28 @@ const ErrorFallback = ({ error, resetErrorBoundary }: ErrorFallbackProps) => {
 
 const SUBMISSION_COOLDOWN = 2000; // 2 seconds cooldown
 
+interface MatchmakingState {
+    status: 'idle' | 'connecting' | 'waiting' | 'matched' | 'error';
+    message: string;
+}
+
 const StartGame = memo(function StartGame() {
     const router = useRouter();
     const [formState, setFormState] = useState<FormState>({
         playerName: "",
         error: undefined,
-        isSubmitting: false
+        isSubmitting: false,
+        isMatchmaking: false
     });
     const [isPending, startTransition] = useTransition();
     const [lastSubmissionTime, setLastSubmissionTime] = useState<number>(0);
-    const [mode, setMode] = useState<"human"|"ai">("human");
+    const [mode, setMode] = useState<"human"|"ai"|"online">("human");
     const [aiDifficulty, setAiDifficulty] = useState(3);
+    const [socket, setSocket] = useState<Socket | null>(null);
+    const [matchmakingState, setMatchmakingState] = useState<MatchmakingState>({
+        status: 'idle',
+        message: ''
+    });
 
     // Cleanup session storage on component mount
     useEffect(() => {
@@ -60,12 +73,131 @@ const StartGame = memo(function StartGame() {
         sessionStorage.removeItem('playerNumber');
     }, []);
 
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            if (socket) {
+                socket.off('connect');
+                socket.off('connect_error');
+                socket.off('matching_status');
+                socket.off('match_found');
+                socket.off('matching_error');
+                socket.off('matching_cancelled');
+                socket.disconnect();
+            }
+        };
+    }, [socket]);
+
     const validateName = useCallback((name: string): string | undefined => {
         if (name.length < 2) return 'Name must be at least 2 characters long';
         if (name.length > 30) return 'Name must be less than 30 characters';
         if (!/^[a-zA-Z0-9\s-_]+$/.test(name)) return 'Name contains invalid characters';
         return undefined;
     }, []);
+
+    const initializeSocketConnection = useCallback(() => {
+        try {
+            setMatchmakingState({
+                status: 'connecting',
+                message: 'Connecting to server...'
+            });
+
+            const newSocket = io(SOCKETIO_BASE_URL, {
+                transports: ['websocket'],
+                autoConnect: true,
+                reconnection: true,
+                reconnectionAttempts: 3,
+                timeout: 10000
+            });
+
+            newSocket.on('connect', () => {
+                setMatchmakingState({
+                    status: 'waiting',
+                    message: 'Connected! Looking for opponents...'
+                });
+                newSocket.emit('start_matching', formState.playerName);
+            });
+
+            newSocket.on('connect_error', (error) => {
+                setMatchmakingState({
+                    status: 'error',
+                    message: 'Failed to connect to server'
+                });
+                setFormState(prev => ({
+                    ...prev,
+                    error: 'Connection failed. Please try again.',
+                    isMatchmaking: false
+                }));
+                newSocket.disconnect();
+            });
+
+            newSocket.on('matching_status', (data) => {
+                setMatchmakingState({
+                    status: 'waiting',
+                    message: data.message
+                });
+            });
+
+            newSocket.on('match_found', (data) => {
+                setMatchmakingState({
+                    status: 'matched',
+                    message: 'Match found! Starting game...'
+                });
+
+                try {
+                    const gameData = JSON.parse(data.game);
+                    const playerNumber = gameData.player_1 === formState.playerName ? 1 : 2;
+                    setPlayerNameInLocalStorage(gameData.id, formState.playerName, playerNumber);
+
+                    // Short delay to show the "match found" message
+                    setTimeout(() => {
+                        router.push(`/games/${gameData.id}`);
+                    }, 1000);
+                } catch (error) {
+                    setMatchmakingState({
+                        status: 'error',
+                        message: 'Error starting game'
+                    });
+                }
+            });
+
+            newSocket.on('matching_error', (data) => {
+                setMatchmakingState({
+                    status: 'error',
+                    message: data.message
+                });
+                setFormState(prev => ({
+                    ...prev,
+                    error: data.message,
+                    isMatchmaking: false
+                }));
+                newSocket.disconnect();
+            });
+
+            newSocket.on('matching_cancelled', () => {
+                setMatchmakingState({
+                    status: 'idle',
+                    message: ''
+                });
+                setFormState(prev => ({
+                    ...prev,
+                    isMatchmaking: false
+                }));
+            });
+
+            setSocket(newSocket);
+        } catch (error) {
+            setMatchmakingState({
+                status: 'error',
+                message: 'Failed to initialize connection'
+            });
+            setFormState(prev => ({
+                ...prev,
+                error: 'Failed to connect to matchmaking server',
+                isMatchmaking: false
+            }));
+        }
+    }, [formState.playerName, router]);
 
     const handleStartGame = useCallback(async () => {
         const now = Date.now();
@@ -94,6 +226,16 @@ const StartGame = memo(function StartGame() {
             error: undefined
         }));
         setLastSubmissionTime(now);
+
+        if (mode === "online") {
+            setFormState(prev => ({
+                ...prev,
+                isMatchmaking: true,
+                error: undefined
+            }));
+            initializeSocketConnection();
+            return;
+        }
 
         try {
             startTransition(async () => {
@@ -152,7 +294,25 @@ const StartGame = memo(function StartGame() {
                 isSubmitting: false
             }));
         }
-    }, [formState.playerName, router, lastSubmissionTime, mode, aiDifficulty]);
+    }, [formState.playerName, router, lastSubmissionTime, mode, aiDifficulty, initializeSocketConnection]);
+
+    const handleCancelMatchmaking = useCallback(() => {
+        if (socket) {
+            socket.emit('cancel_matching');
+            socket.disconnect();
+            setSocket(null);
+            setMatchmakingState({
+                status: 'idle',
+                message: ''
+            });
+            setFormState(prev => ({
+                ...prev,
+                isMatchmaking: false,
+                isSubmitting: false,
+                error: undefined
+            }));
+        }
+    }, [socket]);
 
     const handleNameChange = useCallback((value: string) => {
         setFormState(prev => ({
@@ -161,6 +321,43 @@ const StartGame = memo(function StartGame() {
             error: undefined
         }));
     }, []);
+
+    const renderMatchmakingOverlay = () => {
+        if (!formState.isMatchmaking) return null;
+
+        return (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+                    <div className="text-center">
+                        <h3 className="text-xl font-bold mb-4">
+                            {matchmakingState.status === 'matched' ? '🎮 Match Found!' : '🔍 Finding Opponent...'}
+                        </h3>
+                        <div className="mb-4">
+                            {matchmakingState.status === 'connecting' && (
+                                <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                            )}
+                            {matchmakingState.status === 'waiting' && (
+                                <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                            )}
+                            <p className={`${
+                                matchmakingState.status === 'error' ? 'text-red-500' : 'text-gray-600 dark:text-gray-300'
+                            }`}>
+                                {matchmakingState.message}
+                            </p>
+                        </div>
+                        {matchmakingState.status !== 'matched' && (
+                            <button
+                                onClick={handleCancelMatchmaking}
+                                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    };
 
     return (
         <ErrorBoundary
@@ -237,7 +434,7 @@ const StartGame = memo(function StartGame() {
                                 >
                                     <div className="flex flex-col items-center">
                                         <span className="text-xl mb-1">👥</span>
-                                        <span className="font-medium">Human</span>
+                                        <span className="font-medium">Local</span>
                                     </div>
                                     <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 w-max
                                         pointer-events-none">
@@ -247,6 +444,30 @@ const StartGame = memo(function StartGame() {
                                             <div className="absolute -top-2 left-1/2 transform -translate-x-1/2
                                                 border-4 border-transparent border-b-gray-800 dark:border-b-gray-900"></div>
                                             Local Multiplayer Battle 🤝
+                                        </div>
+                                    </div>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setMode("online")}
+                                    className={`px-6 py-3 rounded-lg transition-all duration-300 relative group
+                                        ${mode === "online"
+                                            ? "bg-gradient-to-r from-emerald-600 to-blue-600 text-white transform scale-105"
+                                            : "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
+                                        }`}
+                                >
+                                    <div className="flex flex-col items-center">
+                                        <span className="text-xl mb-1">🌐</span>
+                                        <span className="font-medium">Online</span>
+                                    </div>
+                                    <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 w-max
+                                        pointer-events-none">
+                                        <div className="bg-gray-800 dark:bg-gray-900 text-white px-3 py-1 rounded-md
+                                            text-xs sm:text-sm opacity-0 group-hover:opacity-100 transition-all duration-300
+                                            shadow-lg">
+                                            <div className="absolute -top-2 left-1/2 transform -translate-x-1/2
+                                                border-4 border-transparent border-b-gray-800 dark:border-b-gray-900"></div>
+                                            Play Online with Friends 🌍
                                         </div>
                                     </div>
                                 </button>
@@ -307,6 +528,8 @@ const StartGame = memo(function StartGame() {
                                 </div>
                             )}
                         </div>
+
+                        {renderMatchmakingOverlay()}
 
                         <FourFuryButton
                             type="submit"

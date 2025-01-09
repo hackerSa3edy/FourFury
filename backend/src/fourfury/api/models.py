@@ -37,6 +37,7 @@ class MongoDBModel(BaseModel):
 class GameMode(str, Enum):
     HUMAN = "human"
     AI = "ai"
+    ONLINE = "online"
 
 
 class StartGame(BaseModel):
