@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
-from typing import Any
 from enum import Enum
+from typing import Any
 
 from pydantic import (
     BaseModel,
@@ -41,6 +41,8 @@ class GameMode(str, Enum):
 
 
 class StartGame(BaseModel):
+    # session_id: str
+    # player_username: str  # This should match the username in the session
     player_name: str
     mode: GameMode = GameMode.HUMAN
     ai_difficulty: int | None = Field(default=3, ge=1, le=5)
@@ -63,7 +65,9 @@ class Game(MongoDBModel):
         ]
 
     player_1: str = Field(max_length=100)
+    player_1_username: str = Field(max_length=100)
     player_2: str | None = Field(max_length=100, default=None)
+    player_2_username: str | None = Field(max_length=100, default=None)
 
     move_number: int = Field(default=1)
     board: list[list[PlayerEnum]] = Field(default=init_board())
@@ -77,7 +81,11 @@ class Game(MongoDBModel):
 
     @computed_field
     def next_player_to_move_username(self) -> str | None:
-        return self.player_1 if self.move_number % 2 else self.player_2
+        return (
+            self.player_1_username
+            if self.move_number % 2
+            else self.player_2_username
+        )
 
     @property
     def next_player_to_move_sign(self) -> PlayerEnum:

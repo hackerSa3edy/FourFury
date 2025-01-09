@@ -124,7 +124,9 @@ def calculate_row_by_col(
 
 class AIEngine:
     def __init__(self, difficulty: int = 3):
-        self.difficulty = min(max(difficulty, 1), 5)  # Ensure difficulty is between 1-5
+        self.difficulty = min(
+            max(difficulty, 1), 5
+        )  # Ensure difficulty is between 1-5
         self.max_depth = self._get_depth_from_difficulty()
 
     def _get_depth_from_difficulty(self) -> int:
@@ -132,9 +134,15 @@ class AIEngine:
         depth_map = {1: 2, 2: 3, 3: 4, 4: 5, 5: 6}
         return depth_map[self.difficulty]
 
-    def evaluate_position(self, board: list[list[PlayerEnum]], player: PlayerEnum) -> int:
+    def evaluate_position(
+        self, board: list[list[PlayerEnum]], player: PlayerEnum
+    ) -> int:
         score = 0
-        opponent = PlayerEnum.PLAYER_1 if player == PlayerEnum.PLAYER_2 else PlayerEnum.PLAYER_2
+        opponent = (
+            PlayerEnum.PLAYER_1
+            if player == PlayerEnum.PLAYER_2
+            else PlayerEnum.PLAYER_2
+        )
 
         for row in range(N):
             for col in range(M):
@@ -152,7 +160,9 @@ class AIEngine:
                     for i in range(4):
                         if not direction.move_condition(row, col, i):
                             break
-                        next_row, next_col = direction.move_row_col(row, col, i)
+                        next_row, next_col = direction.move_row_col(
+                            row, col, i
+                        )
                         cell = board[next_row][next_col]
                         line.append(cell)
 
@@ -182,18 +192,29 @@ class AIEngine:
 
         # Prefer center columns
         for row in range(N):
-            for col in range(M//2 - 1, M//2 + 2):
+            for col in range(M // 2 - 1, M // 2 + 2):
                 if board[row][col] == player:
                     score += 3
 
         return score
 
-    def minimax(self, board: list[list[PlayerEnum]], depth: int, alpha: int, beta: int, maximizing: bool) -> tuple[int, int]:
+    def minimax(
+        self,
+        board: list[list[PlayerEnum]],
+        depth: int,
+        alpha: float,
+        beta: float,
+        maximizing: bool,
+    ) -> tuple[float, int]:
         winner = detect_winner(board)
         if winner is not None:
-            return (1000 if winner == PlayerEnum.PLAYER_2 else -1000) * (depth + 1), -1
+            return (1000.0 if winner == PlayerEnum.PLAYER_2 else -1000.0) * (
+                depth + 1
+            ), -1
         if depth == 0:
-            return self.evaluate_position(board, PlayerEnum.PLAYER_2), -1
+            return float(
+                self.evaluate_position(board, PlayerEnum.PLAYER_2)
+            ), -1
 
         valid_moves = []
         for col in range(M):
@@ -202,14 +223,16 @@ class AIEngine:
                 valid_moves.append((row, col))
 
         if not valid_moves:
-            return 0, -1
+            return 0.0, -1
 
         if maximizing:
-            max_eval = float('-inf')
+            max_eval = float("-inf")
             best_move = valid_moves[0][1]
             for row, col in valid_moves:
                 board[row][col] = PlayerEnum.PLAYER_2
-                eval_score = self.minimax(board, depth - 1, alpha, beta, False)[0]
+                eval_score = self.minimax(
+                    board, depth - 1, alpha, beta, False
+                )[0]
                 board[row][col] = PlayerEnum.EMPTY
                 if eval_score > max_eval:
                     max_eval = eval_score
@@ -219,11 +242,13 @@ class AIEngine:
                     break
             return max_eval, best_move
         else:
-            min_eval = float('inf')
+            min_eval = float("inf")
             best_move = valid_moves[0][1]
             for row, col in valid_moves:
                 board[row][col] = PlayerEnum.PLAYER_1
-                eval_score = self.minimax(board, depth - 1, alpha, beta, True)[0]
+                eval_score = self.minimax(board, depth - 1, alpha, beta, True)[
+                    0
+                ]
                 board[row][col] = PlayerEnum.EMPTY
                 if eval_score < min_eval:
                     min_eval = eval_score
@@ -234,5 +259,7 @@ class AIEngine:
             return min_eval, best_move
 
     def get_best_move(self, board: list[list[PlayerEnum]]) -> int:
-        _, move = self.minimax(board, self.max_depth, float('-inf'), float('inf'), True)
+        _, move = self.minimax(
+            board, self.max_depth, float("-inf"), float("inf"), True
+        )
         return move

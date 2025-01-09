@@ -41,10 +41,14 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
-app.include_router(api_router)
-app.mount("/socket.io", socket_app, name="socketio")
+# Add prefixes to routes
+API_PREFIX = "/api"
+SOCKET_PREFIX = "/socket.io"
+
+app.include_router(api_router, prefix=API_PREFIX)
+app.mount(SOCKET_PREFIX, socket_app, name="socketio")
 
 
-@app.get("/")
-async def root() -> dict[str, str]:
-    return {"message": "Welcome to FourFury API"}
+# @app.get("/")
+# async def root() -> dict[str, str]:
+#     return {"message": "Welcome to FourFury API"}

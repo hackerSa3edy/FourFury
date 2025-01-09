@@ -16,6 +16,8 @@ interface GameResponse {
 
 interface FormState {
     playerName: string;
+    playerUsername: string;
+    sessionId: string | null;
     error: string | undefined;
     isSubmitting: boolean;
     isMatchmaking: boolean;
@@ -41,6 +43,24 @@ const ErrorFallback = ({ error, resetErrorBoundary }: ErrorFallbackProps) => {
     );
 };
 
+const ErrorMessage = ({ message }: { message: string }) => (
+    <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50
+        bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4
+        border-l-4 border-red-500 animate-slideDown">
+        <div className="flex items-center space-x-3">
+            <div className="flex-shrink-0">
+                <svg className="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <div className="flex-1 md:flex md:justify-between">
+                <p className="text-sm text-gray-700 dark:text-gray-300">{message}</p>
+            </div>
+        </div>
+    </div>
+);
+
 const SUBMISSION_COOLDOWN = 2000; // 2 seconds cooldown
 
 interface MatchmakingState {
@@ -52,11 +72,13 @@ const StartGame = memo(function StartGame() {
     const router = useRouter();
     const [formState, setFormState] = useState<FormState>({
         playerName: "",
+        playerUsername: "",
+        sessionId: null,
         error: undefined,
         isSubmitting: false,
         isMatchmaking: false
     });
-    const [isPending, startTransition] = useTransition();
+    const [, startTransition] = useTransition(); // Remove isPending
     const [lastSubmissionTime, setLastSubmissionTime] = useState<number>(0);
     const [mode, setMode] = useState<"human"|"ai"|"online">("human");
     const [aiDifficulty, setAiDifficulty] = useState(3);
@@ -68,9 +90,7 @@ const StartGame = memo(function StartGame() {
 
     // Cleanup session storage on component mount
     useEffect(() => {
-        sessionStorage.removeItem('gameId');
-        sessionStorage.removeItem('playerName');
-        sessionStorage.removeItem('playerNumber');
+        localStorage.clear();
     }, []);
 
     // Cleanup on unmount
@@ -115,13 +135,13 @@ const StartGame = memo(function StartGame() {
                     status: 'waiting',
                     message: 'Connected! Looking for opponents...'
                 });
-                newSocket.emit('start_matching', formState.playerName);
+                newSocket.emit('start_matching', formState.playerUsername, formState.playerName, formState.sessionId);
             });
 
             newSocket.on('connect_error', (error) => {
                 setMatchmakingState({
                     status: 'error',
-                    message: 'Failed to connect to server'
+                    message: `Failed to connect to server${error.message ? error.message : ""}`
                 });
                 setFormState(prev => ({
                     ...prev,
@@ -146,14 +166,14 @@ const StartGame = memo(function StartGame() {
 
                 try {
                     const gameData = JSON.parse(data.game);
-                    const playerNumber = gameData.player_1 === formState.playerName ? 1 : 2;
-                    setPlayerNameInLocalStorage(gameData.id, formState.playerName, playerNumber);
+                    const playerNumber = gameData.player_1_username === formState.playerUsername ? 1 : 2;
+                    setPlayerNameInLocalStorage(gameData.id, formState.playerUsername, playerNumber);
 
                     // Short delay to show the "match found" message
                     setTimeout(() => {
                         router.push(`/games/${gameData.id}`);
                     }, 1000);
-                } catch (error) {
+                } catch {
                     setMatchmakingState({
                         status: 'error',
                         message: 'Error starting game'
@@ -186,7 +206,7 @@ const StartGame = memo(function StartGame() {
             });
 
             setSocket(newSocket);
-        } catch (error) {
+        } catch {
             setMatchmakingState({
                 status: 'error',
                 message: 'Failed to initialize connection'
@@ -197,7 +217,39 @@ const StartGame = memo(function StartGame() {
                 isMatchmaking: false
             }));
         }
-    }, [formState.playerName, router]);
+    }, [formState.playerUsername, router, formState.playerName, formState.sessionId]);
+
+    // Add session creation function
+    const createSession = useCallback(async () => {
+        try {
+            const response = await fetch(`${BACKEND_API_BASE_URL}/games/create_session/`, {
+                method: 'POST',
+                credentials: 'include'
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to create session');
+            }
+
+            const data = await response.json();
+            setFormState(prev => ({
+                ...prev,
+                playerUsername: data.username,
+                sessionId: data.session_id,
+            }));
+        } catch (error) {
+            console.error('Session creation error:', error);
+            setFormState(prev => ({
+                ...prev,
+                error: 'Failed to create session'
+            }));
+        }
+    }, []);
+
+    // Add useEffect for session creation
+    useEffect(() => {
+        createSession();
+    }, [createSession]);
 
     const handleStartGame = useCallback(async () => {
         const now = Date.now();
@@ -247,8 +299,11 @@ const StartGame = memo(function StartGame() {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",
-                            "Accept": "application/json"
+                            "Accept": "application/json",
+                            // Add SameSite attribute handling
+                            // "Cookie": document.cookie // Explicitly include cookies
                         },
+                        credentials: 'include', // This is correct but needs server-side CORS support
                         body: JSON.stringify({
                             player_name: trimmedName,
                             mode,
@@ -262,13 +317,21 @@ const StartGame = memo(function StartGame() {
 
                     if (!response.ok) {
                         const errorData = await response.json().catch(() => null);
+                        if (response.status === 401) {
+                            setFormState(prev => ({
+                                ...prev,
+                                error: 'Please log in to continue. Your session may have expired.',
+                                isSubmitting: false
+                            }));
+                            return;
+                        }
                         throw new Error(errorData?.message || 'Failed to start game');
                     }
 
                     const data = (await response.json()) as GameResponse;
 
                     // Store game session data in local storage
-                    setPlayerNameInLocalStorage(data.id, trimmedName, 1);
+                    setPlayerNameInLocalStorage(data.id, formState.playerUsername, 1);
 
                     router.push(`/games/${data.id}`);
                 } catch (error) {
@@ -294,7 +357,7 @@ const StartGame = memo(function StartGame() {
                 isSubmitting: false
             }));
         }
-    }, [formState.playerName, router, lastSubmissionTime, mode, aiDifficulty, initializeSocketConnection]);
+    }, [formState.playerName, formState.playerUsername, router, lastSubmissionTime, mode, aiDifficulty, initializeSocketConnection, validateName]);
 
     const handleCancelMatchmaking = useCallback(() => {
         if (socket) {
@@ -317,7 +380,7 @@ const StartGame = memo(function StartGame() {
     const handleNameChange = useCallback((value: string) => {
         setFormState(prev => ({
             ...prev,
-            playerName: value,
+            playerName: value,  // Changed from playerUsername to playerName
             error: undefined
         }));
     }, []);
@@ -367,6 +430,7 @@ const StartGame = memo(function StartGame() {
                 sessionStorage.clear();
             }}
         >
+            {formState.error && <ErrorMessage message={formState.error} />}
             <div className="w-full min-h-screen px-4 py-8 sm:px-6 md:px-8 lg:px-12
                 flex items-center justify-center">
                 <div className="w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg mx-auto
@@ -400,7 +464,7 @@ const StartGame = memo(function StartGame() {
                             label="Your Name"
                             value={formState.playerName}
                             onChangeHandler={handleNameChange}
-                            error={formState.error}
+                            error={undefined}  // Remove error prop here since we're showing it in ErrorMessage
                             disabled={formState.isSubmitting}
                         />
 

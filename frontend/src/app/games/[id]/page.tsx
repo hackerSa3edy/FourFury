@@ -1,7 +1,7 @@
 "use client";
 
 import { BACKEND_API_BASE_URL, SOCKETIO_BASE_URL } from "@/constants";
-import React, { useEffect, useState, useCallback, useMemo, Dispatch, SetStateAction } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { FourFuryButton } from "@/components/buttons";
 import { io, Socket } from "socket.io-client";
@@ -17,7 +17,9 @@ interface MovesData {
 export interface GameData {
     id: string;
     player_1: string;
+    player_1_username: string;
     player_2: string | null;
+    player_2_username: string | null;
     move_number: number;
     movees: MovesData[];
     board: number[][];
@@ -53,7 +55,7 @@ export default function PlayGame() {
 
         // init empty 6x7 board
         const N = 6; const M = 7;
-        let newBoard = Array.from({ length: N }, () => Array(M).fill(0));
+        const newBoard = Array.from({ length: N }, () => Array(M).fill(0));
         setData(curr => curr ? { ...curr, board: newBoard, move_number: 0 } : null);
 
         setTimeout(() => {
@@ -88,7 +90,7 @@ export default function PlayGame() {
                 const data = await response.json();
                 setData(data);
                 setLoading(false);
-            } catch (err) {
+            } catch {
                 setSocketStatus(prev => ({
                     ...prev,
                     error: "Failed to fetch game data"
@@ -213,7 +215,7 @@ export default function PlayGame() {
         </div>
     );
 
-    if (!data.player_2 && data.id) return <WaitingPlayerToJoin id={ data.id } />;
+    if (!data.player_2_username && data.id) return <WaitingPlayerToJoin id={ data.id } />;
 
     return (
         <div
@@ -227,8 +229,6 @@ export default function PlayGame() {
         >
             <GameInfo
                 gameData={data}
-                setGameData={setData}
-                replayInProgress={replayInProgress}
                 handleReplayGame={handleReplayGame}
             />
             <GameStatus gameData={data} playerName={playerName} />
@@ -296,7 +296,7 @@ function WaitingPlayerToJoin({ id }: { id: string }) {
 }
 
 // Memoize static components
-const GameInfo = React.memo(({ gameData, setGameData, replayInProgress, handleReplayGame }: { gameData: GameData; setGameData: Dispatch<SetStateAction<GameData | null>>; replayInProgress: boolean; handleReplayGame: () => void; }) => {
+const GameInfo = React.memo(({ gameData, handleReplayGame }: { gameData: GameData; handleReplayGame: () => void; }) => {
     let humanFinishedAt = null;
     if (gameData.finished_at) {
         humanFinishedAt = new Date(gameData.finished_at).toLocaleString();
@@ -356,7 +356,7 @@ const GameBoard = React.memo(({ gameData, socket, playerName }: { gameData: Game
             return;
         }
 
-        const currentPlayer = gameData.move_number % 2 === 0 ? gameData.player_2 : gameData.player_1;
+        const currentPlayer = gameData.move_number % 2 === 0 ? gameData.player_2_username : gameData.player_1_username;
         const storedName = playerName;
 
         console.log('Move attempt:', {
@@ -385,7 +385,7 @@ const GameBoard = React.memo(({ gameData, socket, playerName }: { gameData: Game
         } catch (error) {
             console.error('Error sending move:', error);
         }
-    }, [socket, gameData]);
+    }, [socket, gameData, playerName]);
 
     return (
         <div
@@ -481,7 +481,8 @@ const GameBoardCell = React.memo(({ rowIndex, colIndex, cellValue, handleCellCli
 });
 
 const GameStatus = React.memo(({ gameData, playerName }: { gameData: GameData; playerName: string }) => {
-    const currentPlayer = gameData.move_number % 2 === 0 ? gameData.player_2 : gameData.player_1;
+    const currentPlayer = gameData.move_number % 2 === 0 ? gameData.player_2_username : gameData.player_1_username;
+    const currentPlayerName = gameData.move_number % 2 === 0 ? gameData.player_2 : gameData.player_1;
     const storedName = playerName;
     const isMyTurn = currentPlayer === storedName;
     console.log(`turn: ${isMyTurn}`, `stored name: ${storedName}`, `current player: ${currentPlayer}`);
@@ -500,7 +501,7 @@ const GameStatus = React.memo(({ gameData, playerName }: { gameData: GameData; p
                 </span>
             ) : (
                 <span className={isMyTurn ? 'text-green-500' : 'text-gray-500'}>
-                    {isMyTurn ? 'Your turn' : `Waiting for ${currentPlayer}`}
+                    {isMyTurn ? 'Your turn' : `Waiting for ${currentPlayerName}`}
                 </span>
             )}
         </div>
