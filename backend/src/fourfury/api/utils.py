@@ -7,6 +7,7 @@ from ..core import (
     is_valid_move,
     mark_winner,
 )
+from ..session import session_manager
 from .exceptions import (
     CustomError,
     GameFinishedError,
@@ -38,10 +39,20 @@ def make_move(game: Game, column: int) -> None:
         game.finished_at = datetime.now(timezone.utc)
 
 
-def validate(game: Game, move_input: MoveInput | None) -> str | None:
+async def validate(
+    game: Game, move: MoveInput, session_id: str | None = None
+) -> str | None:
+    if session_id:
+        if not await session_manager.validate_session(session_id, move.player):
+            return "Invalid session"
+
+    current_player = game.next_player_to_move_username
+    if move.player != current_player:
+        return "Not your turn"
+
     try:
         validate_game(game)
-        validate_move(game, move_input)
+        validate_move(game, move)
     except CustomError as e:
         return str(e)
 

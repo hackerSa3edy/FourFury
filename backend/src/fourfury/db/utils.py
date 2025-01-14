@@ -4,4 +4,4 @@ from ..settings import settings
 
 
 def get_db_client() -> AsyncIOMotorClient:
-    return AsyncIOMotorClient(settings.MONGO_URL)
+    return AsyncIOMotorClient(settings.MONGODB_URL)

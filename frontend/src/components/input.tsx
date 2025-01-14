@@ -23,7 +23,6 @@ export const PlayerNameInput = memo(function PlayerNameInput({
     maxLength = 30,
     minLength = 2,
     disabled = false,
-    id = "playerNameInput",
     ariaLabel,
     autoFocus = false
 }: PlayerNameInputProps) {

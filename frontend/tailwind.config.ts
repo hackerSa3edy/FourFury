@@ -13,19 +13,34 @@ export default {
         foreground: "var(--foreground)",
       },
       animation: {
-        'gradient-x': 'gradient-x 12s ease infinite',
-        'shimmer': 'shimmer 1.5s linear infinite',
+          'gradient-xy': 'gradient-xy 15s ease infinite',
+          'text-shimmer': 'text-shimmer 2s ease-in-out infinite',
       },
       keyframes: {
-        'gradient-x': {
-          '0%, 100%': { 'background-position': '200% 0' },
-          '50%': { 'background-position': '0% 0' },
-        },
-        'shimmer': {
-          '0%': { 'background-position': '200% 0' },
-          '100%': { 'background-position': '-200% 0' },
-        }
-      }
+          'gradient-xy': {
+              '0%, 100%': {
+                  'background-size': '400% 400%',
+                  'background-position': 'left center'
+              },
+              '50%': {
+                  'background-size': '200% 200%',
+                  'background-position': 'right center'
+              }
+          },
+          'text-shimmer': {
+              '0%, 100%': {
+                  'background-size': '200% 200%',
+                  'background-position': 'left center'
+              },
+              '50%': {
+                  'background-size': '200% 200%',
+                  'background-position': 'right center'
+              }
+          }
+      },
+      boxShadow: {
+          '3xl': '0 35px 60px -15px rgba(0, 0, 0, 0.3)',
+      },
     },
   },
   plugins: [],
