@@ -55,27 +55,25 @@ export default function RootLayout({ children }: Readonly<RootLayoutProps>) {
   return (
     <html
       lang="en"
-      className={`h-full transition-colors duration-300 ease-in-out ${inter.variable}`}
+      className={`h-full ${inter.variable}`}
       suppressHydrationWarning
     >
       <body
         className={`
           min-h-screen w-full flex flex-col
-          bg-gradient-to-bl from-blue-50 via-white to-fuchsia-100
-          dark:from-gray-900 dark:via-gray-800 dark:to-slate-900
+          bg-gradient-to-bl from-blue-50 via-white to-cyan-100
+          dark:from-gray-900 dark:via-gray-800 dark:to-cyan-900
           transition-colors duration-300
           antialiased font-sans
           overflow-x-hidden
         `}
       >
         <ThemeProviderWrapper>
-          <main className="flex-1 flex relative w-full">
+          <main className="flex-1 flex relative">
             <div className="fixed top-4 right-4 z-50">
               <ThemeButton />
             </div>
-            <div className="w-full flex-1 flex items-center justify-center">
-              {children}
-            </div>
+            {children}
           </main>
         </ThemeProviderWrapper>
       </body>

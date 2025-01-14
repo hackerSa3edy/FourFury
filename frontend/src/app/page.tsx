@@ -8,6 +8,7 @@ import { PlayerNameInput } from "@/components/input";
 import { setPlayerNameInLocalStorage } from "@/utils/localStorageUtils";
 import { ErrorBoundary } from 'react-error-boundary';
 import io, { Socket } from 'socket.io-client';
+import ModeButton from '@/components/mode-button';
 
 interface GameResponse {
     id: string;
@@ -431,23 +432,21 @@ const StartGame = memo(function StartGame() {
             }}
         >
             {formState.error && <ErrorMessage message={formState.error} />}
-            <div className="w-full min-h-screen px-4 py-8 sm:px-6 md:px-8 lg:px-12
-                flex items-center justify-center">
-                <div className="w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg mx-auto
+            <div className="w-full min-h-screen flex items-center justify-center p-4">
+                <div className="w-full max-w-md mx-auto
                     bg-white/90 dark:bg-gray-800/90 backdrop-blur-lg
-                    p-4 sm:p-6 md:p-8 lg:p-10 rounded-2xl shadow-2xl
+                    p-6 rounded-2xl shadow-2xl
                     transition-all duration-300 hover:shadow-3xl
-                    transform hover:-translate-y-1">
-                    <div className="text-center space-y-2 sm:space-y-3 md:space-y-4">
-                        <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold
+                    transform hover:-translate-y-1"
+                >
+                    <div className="text-center space-y-3">
+                        <h1 className="text-4xl font-bold
                             bg-gradient-to-r from-emerald-600 to-blue-600
                             dark:from-emerald-400 dark:to-blue-400
-                            bg-clip-text text-transparent animate-gradient
-                            tracking-tight">
+                            bg-clip-text text-transparent animate-gradient">
                             Four Fury
                         </h1>
-                        <h2 className="text-base sm:text-lg md:text-xl font-medium
-                            text-gray-600 dark:text-gray-300">
+                        <h2 className="text-lg font-medium text-gray-800 dark:text-gray-300">
                             Start Your Adventure
                         </h2>
                     </div>
@@ -457,14 +456,14 @@ const StartGame = memo(function StartGame() {
                             e.preventDefault();
                             handleStartGame();
                         }}
-                        className="mt-4 sm:mt-6 md:mt-8 space-y-3 sm:space-y-4 md:space-y-6"
+                        className="mt-6 space-y-4"
                         noValidate
                     >
                         <PlayerNameInput
                             label="Your Name"
                             value={formState.playerName}
                             onChangeHandler={handleNameChange}
-                            error={undefined}  // Remove error prop here since we're showing it in ErrorMessage
+                            error={undefined}
                             disabled={formState.isSubmitting}
                         />
 
@@ -479,7 +478,7 @@ const StartGame = memo(function StartGame() {
                                 <div className="relative">
                                     <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/10 to-blue-600/10
                                         dark:from-emerald-400/5 dark:to-blue-400/5 rounded-lg transform -skew-y-1"></div>
-                                    <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400
+                                    <p className="text-sm sm:text-base text-gray-800 dark:text-gray-400
                                         py-2 px-4 relative z-10 leading-relaxed">
                                         Select your preferred way to play
                                     </p>
@@ -487,84 +486,20 @@ const StartGame = memo(function StartGame() {
                             </div>
 
                             <div className="flex justify-center gap-4">
-                                <button
-                                    type="button"
-                                    onClick={() => setMode("human")}
-                                    className={`px-6 py-3 rounded-lg transition-all duration-300 relative group
-                                        ${mode === "human"
-                                            ? "bg-gradient-to-r from-emerald-600 to-blue-600 text-white transform scale-105"
-                                            : "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
-                                        }`}
-                                >
-                                    <div className="flex flex-col items-center">
-                                        <span className="text-xl mb-1">👥</span>
-                                        <span className="font-medium">Local</span>
-                                    </div>
-                                    <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 w-max
-                                        pointer-events-none">
-                                        <div className="bg-gray-800 dark:bg-gray-900 text-white px-3 py-1 rounded-md
-                                            text-xs sm:text-sm opacity-0 group-hover:opacity-100 transition-all duration-300
-                                            shadow-lg">
-                                            <div className="absolute -top-2 left-1/2 transform -translate-x-1/2
-                                                border-4 border-transparent border-b-gray-800 dark:border-b-gray-900"></div>
-                                            Local Multiplayer Battle 🤝
-                                        </div>
-                                    </div>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setMode("online")}
-                                    className={`px-6 py-3 rounded-lg transition-all duration-300 relative group
-                                        ${mode === "online"
-                                            ? "bg-gradient-to-r from-emerald-600 to-blue-600 text-white transform scale-105"
-                                            : "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
-                                        }`}
-                                >
-                                    <div className="flex flex-col items-center">
-                                        <span className="text-xl mb-1">🌐</span>
-                                        <span className="font-medium">Online</span>
-                                    </div>
-                                    <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 w-max
-                                        pointer-events-none">
-                                        <div className="bg-gray-800 dark:bg-gray-900 text-white px-3 py-1 rounded-md
-                                            text-xs sm:text-sm opacity-0 group-hover:opacity-100 transition-all duration-300
-                                            shadow-lg">
-                                            <div className="absolute -top-2 left-1/2 transform -translate-x-1/2
-                                                border-4 border-transparent border-b-gray-800 dark:border-b-gray-900"></div>
-                                            Play Online with Friends 🌍
-                                        </div>
-                                    </div>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setMode("ai")}
-                                    className={`px-6 py-3 rounded-lg transition-all duration-300 relative group
-                                        ${mode === "ai"
-                                            ? "bg-gradient-to-r from-emerald-600 to-blue-600 text-white transform scale-105"
-                                            : "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
-                                        }`}
-                                >
-                                    <div className="flex flex-col items-center">
-                                        <span className="text-xl mb-1">🤖</span>
-                                        <span className="font-medium">AI</span>
-                                    </div>
-                                    <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 w-max
-                                        pointer-events-none">
-                                        <div className="bg-gray-800 dark:bg-gray-900 text-white px-3 py-1 rounded-md
-                                            text-xs sm:text-sm opacity-0 group-hover:opacity-100 transition-all duration-300
-                                            shadow-lg">
-                                            <div className="absolute -top-2 left-1/2 transform -translate-x-1/2
-                                                border-4 border-transparent border-b-gray-800 dark:border-b-gray-900"></div>
-                                            Test Your Skills vs AI 🎯
-                                        </div>
-                                    </div>
-                                </button>
+                                {["human", "online", "ai"].map((gameMode) => (
+                                    <ModeButton
+                                        key={gameMode}
+                                        mode={gameMode}
+                                        currentMode={mode}
+                                        onClick={setMode}
+                                    />
+                                ))}
                             </div>
 
                             {mode === "ai" && (
                                 <div className="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg">
                                     <label className="block text-center mb-3">
-                                        <span className="text-sm font-medium">AI Difficulty</span>
+                                        <span className="text-sm font-medium text-gray-800 dark:text-gray-200">AI Difficulty</span>
                                     </label>
                                     <div className="flex justify-center gap-2">
                                         {[1, 2, 3, 4, 5].map((level) => (
@@ -575,14 +510,14 @@ const StartGame = memo(function StartGame() {
                                                 className={`w-10 h-10 rounded-full transition-all duration-300
                                                     ${aiDifficulty === level
                                                         ? "bg-gradient-to-r from-emerald-600 to-blue-600 text-white transform scale-110"
-                                                        : "bg-white dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500"
+                                                        : "bg-white dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200"
                                                     }`}
                                             >
                                                 {level}
                                             </button>
                                         ))}
                                     </div>
-                                    <div className="text-center mt-2 text-sm text-gray-600 dark:text-gray-300">
+                                    <div className="text-center mt-2 text-sm text-gray-800 dark:text-gray-300">
                                         {aiDifficulty === 1 && "Beginner"}
                                         {aiDifficulty === 2 && "Easy"}
                                         {aiDifficulty === 3 && "Medium"}

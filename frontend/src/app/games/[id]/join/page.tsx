@@ -148,10 +148,10 @@ export default function JoinGame() {
 
     if (isLoading) {
         return (
-            <div className="flex flex-1 min-h-full items-center justify-center bg-gradient-to-bl from-blue-50 to-blue-200 dark:from-gray-900 dark:to-blue-900">
-                <div className="relative p-8 rounded-xl bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm shadow-xl">
-                    <div className="w-12 h-12 border-4 border-blue-500 dark:border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                    <div className="text-lg font-medium text-slate-600 dark:text-slate-300 animate-pulse">
+            <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-blue-50/90 to-blue-200/90 dark:from-gray-900/90 dark:to-blue-900/90 backdrop-blur-sm">
+                <div className="relative p-6 sm:p-8 rounded-2xl bg-white/80 dark:bg-slate-800/80 shadow-xl transform hover:scale-105 transition-all duration-300">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 border-4 border-blue-500 dark:border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                    <div className="text-base sm:text-lg font-medium text-slate-600 dark:text-slate-300 animate-pulse">
                         Loading...
                     </div>
                 </div>
@@ -172,21 +172,41 @@ export default function JoinGame() {
     return (
         <>
             {error && <ErrorMessage message={error} />}
-            <div className="flex flex-1 min-h-full items-center justify-center bg-gradient-to-br from-cyan-50 to-cyan-200 dark:from-gray-900 dark:to-cyan-900">
-                <div className="w-full sm:w-8/12 md:w-6/12 lg:w-4/12 mx-4 p-8 rounded-2xl bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm shadow-xl">
-                    <div className="text-center space-y-4">
-                        <h2 className="text-4xl font-bold bg-gradient-to-r from-cyan-600 to-blue-600 dark:from-cyan-400 dark:to-blue-400 bg-clip-text text-transparent">
+            <div className="
+                fixed inset-0
+                flex items-center justify-center
+                p-4 sm:p-6 md:p-8
+                bg-gradient-to-br from-cyan-50/90 to-cyan-100/90 dark:from-gray-900/90 dark:to-cyan-900/90
+                backdrop-blur-sm
+            ">
+                <div className="
+                    w-full max-w-lg
+                    p-6 sm:p-8 md:p-10
+                    rounded-2xl
+                    bg-white/80 dark:bg-gray-800/80
+                    shadow-xl
+                    transform transition-all duration-500
+                    hover:scale-[1.02]
+                    border border-cyan-100/50 dark:border-cyan-900/50
+                ">
+                    <div className="text-center space-y-6">
+                        <h2 className="
+                            text-3xl sm:text-4xl font-bold
+                            bg-gradient-to-r from-cyan-600 to-blue-600 dark:from-cyan-400 dark:to-blue-400
+                            bg-clip-text text-transparent
+                            animate-gradient
+                        ">
                             Join Game
                         </h2>
-                        <div className="space-y-2">
-                            <h6 className="text-lg text-gray-700 dark:text-gray-200">
+                        <div className="space-y-3">
+                            <h6 className="text-base sm:text-lg text-gray-700 dark:text-gray-200">
                                 <span className="font-semibold text-cyan-600 dark:text-blue-400">
                                     {gameData.player_1}{" "}
                                 </span>
                                 challenged your skills in Connect4
                             </h6>
                             <p className="text-sm text-gray-600 dark:text-gray-400">
-                                Please enter your name and click &quot;Join Game&quot; to start the battle
+                                Enter your name below to begin the battle
                             </p>
                         </div>
                     </div>
@@ -196,8 +216,9 @@ export default function JoinGame() {
                             label="Your name"
                             value={playerName}
                             onChangeHandler={setPlayerName}
-                            error={undefined} // Remove error prop here since we're showing it in ErrorMessage
+                            error={undefined}
                             disabled={isJoining}
+                            autoFocus={true}
                         />
                         <div className="pt-2">
                             <FourFuryButton

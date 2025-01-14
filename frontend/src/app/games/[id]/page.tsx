@@ -163,11 +163,11 @@ export default function PlayGame() {
         };
     }, [data?.id]);
 
-    // Loading and error states
+    // Loading state
     if (isLoading) {
         return (
-            <div className="absolute inset-x-0 top-0 bottom-0 flex items-center justify-center bg-gradient-to-bl from-blue-50 to-blue-200 dark:from-gray-900 dark:to-blue-900 z-40">
-                <div className="relative p-8 rounded-xl bg-white dark:bg-slate-800 shadow-xl dark:shadow-slate-700/20">
+            <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-blue-50/90 to-blue-200/90 dark:from-gray-900/90 dark:to-blue-900/90 backdrop-blur-md z-50">
+                <div className="relative p-8 rounded-2xl bg-white/90 dark:bg-slate-800/90 shadow-2xl">
                     <div className="w-12 h-12 border-4 border-blue-500 dark:border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
                     <div className="text-lg font-medium text-slate-600 dark:text-slate-300 animate-pulse">
                         Loading your game...
@@ -176,11 +176,11 @@ export default function PlayGame() {
             </div>
         );
     }
-
+    // Error state
     if (socketStatus.error) {
         return (
-            <div className="absolute inset-x-0 top-0 bottom-0 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 z-40">
-                <div className="p-8 rounded-xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm shadow-xl border border-red-100 dark:border-red-900 transform transition-all hover:scale-105">
+            <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 backdrop-blur-md z-50">
+                <div className="p-8 rounded-xl bg-white/90 dark:bg-slate-800/90 shadow-2xl border border-red-200 dark:border-red-800">
                     <div className="flex items-center space-x-4">
                         <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                             <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -198,8 +198,8 @@ export default function PlayGame() {
     }
 
     if (!data || !playerName) return (
-        <div className="absolute inset-x-0 top-0 bottom-0 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 z-40">
-            <div className="p-8 rounded-xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm shadow-xl border border-red-100 dark:border-red-900 transform transition-all hover:scale-105">
+        <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 backdrop-blur-md z-50">
+            <div className="p-8 rounded-xl bg-white/90 dark:bg-slate-800/90 shadow-2xl border border-red-200 dark:border-red-800">
                 <div className="flex flex-col items-center space-y-4">
                     <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                         <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -215,31 +215,26 @@ export default function PlayGame() {
         </div>
     );
 
-    if (!data.player_2_username && data.id) return <WaitingPlayerToJoin id={ data.id } />;
+    if (!data.player_2_username && data.id) return <WaitingPlayerToJoin id={data.id} />;
 
     return (
-        <div
-            className="
-            flex flex-1 flex-col min-h-full
-            py-4 sm:py-6 md:py-8 lg:py-10
-            px-4 sm:px-8 md:px-12 xl:px-16
-            w-full sm:w-10/12 md:w-8/12 lg:w-6/12
-            mx-auto bg-gradient-to-br from-cyan-50 to-cyan-200 dark:from-gray-900 dark:to-cyan-900
-        "
-        >
-            <GameInfo
-                gameData={data}
-                handleReplayGame={handleReplayGame}
-            />
-            <GameStatus gameData={data} playerName={playerName} />
-            <GameBoard gameData={data} socket={socket} playerName={playerName} />
+        <div className="min-h-screen w-full bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-gray-900 dark:to-cyan-950">
+            <div className="container mx-auto px-4 py-8 max-w-7xl">
+                <div className="flex flex-col space-y-6">
+                    <GameInfo
+                        gameData={data}
+                        handleReplayGame={handleReplayGame}
+                    />
+                    <GameStatus gameData={data} playerName={playerName} />
+                    <GameBoard gameData={data} socket={socket} playerName={playerName} />
+                </div>
+            </div>
         </div>
     );
 }
 
 function WaitingPlayerToJoin({ id }: { id: string }) {
     const [isCopied, setIsCopied] = useState(false);
-
     const frontendBaseUrl = window.location.origin;
     const linkToShare = `${frontendBaseUrl}/games/${id}/join/`;
 
@@ -250,93 +245,63 @@ function WaitingPlayerToJoin({ id }: { id: string }) {
     };
 
     return (
-        <div className="flex flex-1 flex-col justify-center min-h-full mx-4">
-            <div
-                className={`
-                    w-full sm:w-5/6 md:w-3/4 lg:w-3/5 xl:w-6/12 3xl:w-1/3
-                    mx-auto
-                    px-2 py-12
-                    text-center
-                    shadow-lg rounded-xl
-                    border-2
-                    bg-cyan-600
-                    text-slate-100
-                    border-cyan-600
-                    shadow-cyan-500
-                    dark:bg-inherit
-                    dark:text-blue-100
-                    dark:border-blue-500
-                    dark:shadow-2xl
-                    dark:shadow-blue-600
-                `}
-            >
-                <p className="text-xl font-bold">Waiting for player to join</p>
-                <div className="relative mt-4">
-                    Share this link with a friend to join (click to copy): <br />
-                    <span
-                        className={`cursor-pointer hover:underline dark:text-blue-400 dark:hover:text-blue-300`}
-                        onClick={handleCopyLink}
-                    >
-                        {linkToShare}
-                    </span>
-                    <span
-                        className={`
-                            absolute left-1/2 transform -translate-x-1/2 top-14
-                            rounded-md bg-cyan-500 text-slate-100 dark:bg-blue-500 dark:text-blue-100 px-2 py-1Ω
-                            text-xs transition-opacity duration-500
-                            ${isCopied ? "opacity-100" : "opacity-0"}
-                        `}
-                    >
-                        Copied!
-                    </span>
+        <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-gray-900 dark:to-cyan-950">
+            <div className="w-full max-w-2xl mx-4 p-8 rounded-xl bg-white/90 dark:bg-slate-800/90 shadow-2xl border border-cyan-200 dark:border-cyan-800">
+                <div className="text-center space-y-6">
+                    <h2 className="text-2xl font-bold text-cyan-700 dark:text-cyan-300">Waiting for player to join</h2>
+                    <div className="relative">
+                        <p className="text-slate-600 dark:text-slate-300 mb-4">
+                            Share this link with a friend to join (click to copy):
+                        </p>
+                        <button
+                            onClick={handleCopyLink}
+                            className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 transition-colors break-all"
+                        >
+                            {linkToShare}
+                        </button>
+                        <div
+                            className={`
+                                absolute left-1/2 transform -translate-x-1/2 mt-4
+                                bg-cyan-500 text-white px-3 py-1 rounded
+                                transition-opacity duration-300
+                                ${isCopied ? "opacity-100" : "opacity-0"}
+                            `}
+                        >
+                            Copied!
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     );
 }
 
-// Memoize static components
 const GameInfo = React.memo(({ gameData, handleReplayGame }: { gameData: GameData; handleReplayGame: () => void; }) => {
-    let humanFinishedAt = null;
-    if (gameData.finished_at) {
-        humanFinishedAt = new Date(gameData.finished_at).toLocaleString();
-    }
+    const humanFinishedAt = gameData.finished_at ? new Date(gameData.finished_at).toLocaleString() : null;
 
     return (
-        <div
-            className={`
-                py-4
-                px-5 rounded-xl
-                text-center
-                shadow-lg
-                border-2
-                bg-slate-200
-                text-cyan-800
-                border-cyan-300
-                shadow-cyan-500
-                dark:bg-violet-950
-                dark:text-violet-100
-                dark:border-violet-500
-                dark:shadow-violet-500
-                text-md 3xl:text-lg tracking-tight
-            `}
-        >
-            <p className="text-xl 3xl:text-2xl font-bold mb-1">Connect4 BATTLE</p>
-            <p className="text-lg 3xl:text-xl font-bold ">
-                Game:
-                <span className="text-red-400 dark:text-purple-400"> {gameData.player_1}</span> vs
-                <span className="text-yellow-400 dark:text-blue-500 drop-shadow-2xl"> {gameData.player_2}</span>
-            </p>
-            {humanFinishedAt && <p> Game finished at {humanFinishedAt}</p>}
-            <p> Move #{gameData.move_number} </p>
-            {humanFinishedAt && (
-                <div className="mx-auto mt-2 w-1/2 sm:w-1/3">
-                    <FourFuryButton
-                        label="Replay Game"
-                        onClickHandler={handleReplayGame}
-                    />
+        <div className="rounded-xl p-6 bg-white/90 dark:bg-slate-800/90 shadow-xl border border-cyan-200 dark:border-cyan-800">
+            <div className="text-center space-y-3">
+                <h1 className="text-3xl font-bold text-cyan-700 dark:text-cyan-300">Connect4 BATTLE</h1>
+                <div className="text-xl">
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">Game: </span>
+                    <span className="text-red-500 dark:text-purple-500">{gameData.player_1}</span>
+                    <span className="text-slate-700 dark:text-slate-300"> vs </span>
+                    <span className="text-yellow-500 dark:text-blue-500">{gameData.player_2}</span>
                 </div>
-            )}
+                <div className="text-slate-600 dark:text-slate-400">
+                    <p>Move #{gameData.move_number}</p>
+                    {humanFinishedAt && <p>Game finished at {humanFinishedAt}</p>}
+                </div>
+                {humanFinishedAt && (
+                    <div className="max-w-xs mx-auto">
+                        <FourFuryButton
+                            label="Replay Game"
+                            onClickHandler={handleReplayGame}
+                        />
+                    </div>
+                )}
+            </div>
         </div>
     );
 });
@@ -400,6 +365,7 @@ const GameBoard = React.memo(({ gameData, socket, playerName }: { gameData: Game
                 dark:shadow-blue-600
                 dark:border-2
                 dark:border-blue-600
+                max-h-[80vh] overflow-y-auto
             `}
         >
             <table className="mx-auto my-0 sm:my-2">
@@ -452,16 +418,19 @@ const GameBoardCell = React.memo(({ rowIndex, colIndex, cellValue, handleCellCli
 
     const cellStyle = useMemo(() => {
         const baseStyle = `
-            h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 lg:h-14 lg:w-14 xl:h-16 xl:w-16 3xl:h-20 3xl:w-20
-            rounded-full border-2 transition-all duration-200 cursor-${isPlayable ? 'pointer' : 'not-allowed'}
-            ${isHighlighted ? 'border-cyan-400 dark:border-cyan-500 shadow-lg' : 'border-white dark:border-violet-300'}
+            aspect-square w-6 sm:w-8 md:w-10 lg:w-12 xl:w-14
+            rounded-full border-2
+            transform transition-all duration-300
+            hover:scale-105 active:scale-95
+            cursor-${isPlayable ? 'pointer' : 'not-allowed'}
+            ${isHighlighted ? 'border-cyan-400 dark:border-cyan-500 shadow-lg animate-pulse' : 'border-white dark:border-violet-300'}
         `;
 
-        if (cellValue === 1) return `${baseStyle} bg-red-400 dark:bg-purple-500`;
-        if (cellValue === 2) return `${baseStyle} bg-yellow-300 dark:bg-blue-600`;
-        if (cellValue === 3) return `${baseStyle} bg-green-400 dark:bg-green-600`;
+        if (cellValue === 1) return `${baseStyle} bg-gradient-to-br from-red-400 to-red-500 dark:from-purple-500 dark:to-purple-600`;
+        if (cellValue === 2) return `${baseStyle} bg-gradient-to-br from-yellow-300 to-yellow-400 dark:from-blue-500 dark:to-blue-600`;
+        if (cellValue === 3) return `${baseStyle} bg-gradient-to-br from-green-400 to-green-500 dark:from-green-500 dark:to-green-600`;
 
-        return `${baseStyle} ${isHighlighted ? 'bg-cyan-800 dark:bg-cyan-900/30' : ''}`;
+        return `${baseStyle} ${isHighlighted ? 'bg-gradient-to-br from-cyan-700 to-cyan-800 dark:from-cyan-800 dark:to-cyan-900' : ''}`;
     }, [cellValue, isHighlighted, isPlayable]);
 
     return (
