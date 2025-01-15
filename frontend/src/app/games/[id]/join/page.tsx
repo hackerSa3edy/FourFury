@@ -8,7 +8,7 @@ import { GameData } from "@/app/games/[id]/page";
 import { useEffect, useState, useCallback } from "react";
 
 import {
-    setPlayerNameInLocalStorage,
+    setFourFuryCookie,
 } from "@/utils/localStorageUtils";
 
 interface ErrorResponse {
@@ -136,7 +136,7 @@ export default function JoinGame() {
             }
 
             const data = await response.json();
-            setPlayerNameInLocalStorage(data.id, playerUsername, 2);
+            setFourFuryCookie(data.id, playerUsername, 2);
             router.push(`/games/${data.id}`);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to join game');

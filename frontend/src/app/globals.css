@@ -92,6 +92,15 @@
   50% { transform: translateY(var(--bounce-height)); }
 }
 
+@keyframes bounce-gentle {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.animate-bounce-gentle {
+    animation: bounce-gentle 2s infinite;
+}
+
 /* Utilities */
 @layer utilities {
   .backdrop-blur-lg {

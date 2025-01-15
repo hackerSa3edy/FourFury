@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface FourFuryButtonProps {
     label: string;
@@ -90,4 +91,134 @@ export const FourFuryButton = memo(function FourFuryButton({
     );
 });
 
+interface RematchButtonProps {
+    rematchStatus: string;
+    onRematch: () => void;
+    onCancelRematch: () => void;
+}
+
+export const RematchButton = memo(function RematchButton({
+    rematchStatus,
+    onRematch,
+    onCancelRematch
+}: RematchButtonProps) {
+    if (rematchStatus === 'waiting') {
+        return (
+            <button
+                onClick={onCancelRematch}
+                className="relative group px-8 py-3 min-w-[180px] bg-gradient-to-r from-red-500 to-rose-600
+                         text-white rounded-xl font-medium shadow-lg
+                         transform transition-all duration-300
+                         hover:scale-105 hover:shadow-xl
+                         active:scale-95
+                         border border-red-400/50
+                         dark:from-red-600 dark:to-rose-700"
+            >
+                <span className="absolute inset-0 bg-gradient-to-r from-red-400/0 via-red-400/30 to-red-400/0
+                               opacity-0 group-hover:opacity-100 transition-opacity animate-shine"></span>
+                Cancel Request
+            </button>
+        );
+    }
+
+    return (
+        <button
+            onClick={onRematch}
+            disabled={rematchStatus === 'waiting'}
+            className="relative group px-8 py-3 min-w-[180px] bg-gradient-to-r from-emerald-500 to-cyan-500
+                     text-white rounded-xl font-medium shadow-lg
+                     transform transition-all duration-300
+                     hover:scale-105 hover:shadow-xl
+                     active:scale-95
+                     border border-emerald-400/50
+                     dark:from-emerald-600 dark:to-cyan-600
+                     disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+            <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0
+                           opacity-0 group-hover:opacity-100 transition-opacity animate-shine"></span>
+            Play Again
+        </button>
+    );
+});
+
+interface ReplayButtonProps {
+    onReplay: () => void;
+}
+
+export const ReplayButton = memo(function ReplayButton({ onReplay }: ReplayButtonProps) {
+    return (
+        <button
+            onClick={onReplay}
+            className="relative group px-8 py-3 min-w-[180px] bg-gradient-to-r from-violet-500 to-purple-600
+                     text-white rounded-xl font-medium shadow-lg
+                     transform transition-all duration-300
+                     hover:scale-105 hover:shadow-xl
+                     active:scale-95
+                     border border-violet-400/50
+                     dark:from-violet-600 dark:to-purple-700"
+        >
+            <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0
+                           opacity-0 group-hover:opacity-100 transition-opacity animate-shine"></span>
+            <div className="flex items-center justify-center gap-2">
+                <svg className="w-5 h-5 animate-spin-slow" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Replay Game
+            </div>
+        </button>
+    );
+});
+
+interface HomeButtonProps {
+    onClick?: () => void;
+}
+
+export const HomeButton = memo(function HomeButton({ onClick }: HomeButtonProps) {
+    const router = useRouter();
+
+    const handleClick = () => {
+        if (onClick) {
+            onClick();
+            return;
+        }
+        router.push('/');
+    };
+
+    return (
+        <button
+            onClick={handleClick}
+            className="fixed top-4 left-4 p-3 rounded-full bg-white/90 dark:bg-slate-800/90
+                     shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-300
+                     border border-cyan-200 dark:border-cyan-800 group z-50"
+            aria-label="Return to home"
+        >
+            <div className="relative">
+                <svg
+                    className="w-6 h-6 text-cyan-600 dark:text-cyan-400 transform transition-transform duration-300
+                             group-hover:-translate-x-1"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                    />
+                </svg>
+                <span className="absolute left-full ml-2 px-2 py-1 text-sm font-medium text-cyan-600 dark:text-cyan-400
+                               bg-white/90 dark:bg-slate-800/90 rounded-md opacity-0 group-hover:opacity-100
+                               transition-opacity duration-300 whitespace-nowrap">
+                    Return Home
+                </span>
+            </div>
+        </button>
+    );
+});
+
+HomeButton.displayName = 'HomeButton';
 FourFuryButton.displayName = 'FourFuryButton';
+RematchButton.displayName = 'RematchButton';
+ReplayButton.displayName = 'ReplayButton';

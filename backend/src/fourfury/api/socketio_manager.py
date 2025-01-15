@@ -8,7 +8,7 @@ from ..cache import redis_client
 from ..core import AIEngine, calculate_row_by_col
 from ..session import session_manager
 from ..settings import settings
-from .crud import get_game_by_id, update_game
+from .crud import get_game_by_id, start_new_game, update_game
 from .matchmaking import MatchMaker
 from .models import Game, GameMode, MoveInput, get_model_safe
 from .utils import make_move, validate
@@ -88,10 +88,17 @@ async def connect(sid: str, environ: dict) -> None:
 async def disconnect(sid: str) -> None:
     try:
         session = await sio.get_session(sid)
-        player_username = session.get("matching_player")
+        username = session.get("username")
+        game_id = session.get("game_id")
 
-        if player_username:
-            await matchmaker.cancel_matching(player_username)
+        if username:
+            await matchmaker.cancel_matching(username)
+
+        # Handle game disconnection if player was in a game
+        if game_id and username:
+            presence_key = f"presence:{game_id.split(',')[0]}:{username}"
+            await redis_client.delete(presence_key)
+
     except Exception as e:
         logger.error(f"Disconnect cleanup error: {e}")
 
@@ -102,12 +109,22 @@ async def disconnect(sid: str) -> None:
 async def join_game(sid: str, game_id: str) -> None:
     await sio.enter_room(sid, game_id)
     await game_manager.add_player(sid, game_id)
+    # Track player presence
+    session = await sio.get_session(sid)
+    if session.get("username"):
+        presence_key = f"presence:{game_id}:{session['username']}"
+        await redis_client.set(presence_key, "active", ex=300)  # 5 min expiry
 
 
 @sio.event
 async def leave_game(sid: str, game_id: str) -> None:
     await sio.leave_room(sid, game_id)
     await game_manager.remove_player(sid, game_id)
+    # Clear player presence
+    session = await sio.get_session(sid)
+    if session.get("username"):
+        presence_key = f"presence:{game_id}:{session['username']}"
+        await redis_client.delete(presence_key)
 
 
 @sio.event
@@ -247,5 +264,117 @@ async def cancel_matching(sid: str) -> None:
         await sio.emit(
             "matching_error",
             {"message": "Error cancelling matchmaking"},
+            room=sid,
+        )
+
+
+@sio.event
+async def request_rematch(sid: str, game_id: str) -> None:
+    try:
+        session = await sio.get_session(sid)
+        username = session.get("username")
+        game = await get_game_by_id(game_id)
+
+        if not game or not username:
+            return None
+
+        # For AI games, create new game immediately
+        if game.mode == GameMode.AI:
+            new_game = await start_new_game(
+                game.player_1_username,
+                game.player_1,
+                mode=GameMode.AI,
+                ai_difficulty=game.ai_difficulty,
+                session_id=session.get("session_id"),
+            )
+            if new_game:
+                await sio.emit(
+                    "rematch_started", {"game_id": str(new_game.id)}, room=sid
+                )
+            return
+
+        # Check if opponent is still in game
+        opponent_username = (
+            game.player_2_username
+            if username == game.player_1_username
+            else game.player_1_username
+        )
+        presence_key = f"presence:{game_id}:{opponent_username}"
+        is_opponent_present = await redis_client.exists(presence_key)
+
+        if not is_opponent_present:
+            await sio.emit(
+                "rematch_error",
+                {"message": "Opponent has left the game"},
+                room=sid,
+            )
+            return
+
+        # Send rematch request to opponent
+        await sio.emit(
+            "rematch_requested",
+            {
+                "requestedBy": username,
+                "requesterName": game.player_1
+                if username == game.player_1_username
+                else game.player_2,
+            },
+            room=str(game.id),
+        )
+
+    except Exception as e:
+        logger.error(f"Rematch error: {e}")
+        await sio.emit(
+            "rematch_error", {"message": "Error setting up rematch"}, room=sid
+        )
+
+
+@sio.event
+async def accept_rematch(sid: str, game_id: str) -> None:
+    try:
+        session = await sio.get_session(sid)
+        username = session.get("username")
+        game = await get_game_by_id(game_id)
+
+        if not game or not username:
+            return None
+
+        new_game = await matchmaker.create_rematch(game)
+        if new_game:
+            await sio.emit(
+                "rematch_started",
+                {"game_id": str(new_game.id)},
+                room=str(game.id),
+            )
+
+    except Exception as e:
+        logger.error(f"Accept rematch error: {e}")
+        await sio.emit(
+            "rematch_error", {"message": "Error accepting rematch"}, room=sid
+        )
+
+
+@sio.event
+async def decline_rematch(sid: str, game_id: str) -> None:
+    try:
+        await sio.emit("rematch_declined", room=str(game_id))
+    except Exception as e:
+        logger.error(f"Decline rematch error: {e}")
+
+
+@sio.event
+async def cancel_rematch(sid: str, game_id: str) -> None:
+    try:
+        # Notify ALL players in the game room that rematch was cancelled
+        await sio.emit("rematch_cancelled", room=str(game_id))
+
+        # Optionally, clean up any game-specific rematch state
+        rematch_key = f"rematch:{game_id}"
+        await redis_client.delete(rematch_key)
+    except Exception as e:
+        logger.error(f"Cancel rematch error: {e}")
+        await sio.emit(
+            "rematch_error",
+            {"message": "Error cancelling rematch request"},
             room=sid,
         )

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { BACKEND_API_BASE_URL, SOCKETIO_BASE_URL } from "@/constants";
 import { FourFuryButton } from "@/components/buttons";
 import { PlayerNameInput } from "@/components/input";
-import { setPlayerNameInLocalStorage } from "@/utils/localStorageUtils";
+import { setFourFuryCookie, clearFourFuryCookie } from "@/utils/localStorageUtils";
 import { ErrorBoundary } from 'react-error-boundary';
 import io, { Socket } from 'socket.io-client';
 import ModeButton from '@/components/mode-button';
@@ -89,9 +89,9 @@ const StartGame = memo(function StartGame() {
         message: ''
     });
 
-    // Cleanup session storage on component mount
+    // Clear FourFury cookie on component mount
     useEffect(() => {
-        localStorage.clear();
+        clearFourFuryCookie();
     }, []);
 
     // Cleanup on unmount
@@ -168,7 +168,7 @@ const StartGame = memo(function StartGame() {
                 try {
                     const gameData = JSON.parse(data.game);
                     const playerNumber = gameData.player_1_username === formState.playerUsername ? 1 : 2;
-                    setPlayerNameInLocalStorage(gameData.id, formState.playerUsername, playerNumber);
+                    setFourFuryCookie(gameData.id, formState.playerUsername, playerNumber);
 
                     // Short delay to show the "match found" message
                     setTimeout(() => {
@@ -332,7 +332,7 @@ const StartGame = memo(function StartGame() {
                     const data = (await response.json()) as GameResponse;
 
                     // Store game session data in local storage
-                    setPlayerNameInLocalStorage(data.id, formState.playerUsername, 1);
+                    setFourFuryCookie(data.id, formState.playerUsername, 1);
 
                     router.push(`/games/${data.id}`);
                 } catch (error) {

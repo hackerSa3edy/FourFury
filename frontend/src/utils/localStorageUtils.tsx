@@ -1,6 +1,6 @@
 // Example improvements:
 // 1. Minimal checks, consistent naming, short doc comments.
-export function setPlayerNameInLocalStorage(
+export function setFourFuryCookie(
   gameId: string,
   username: string,
   playerNumber: 1 | 2
@@ -8,27 +8,22 @@ export function setPlayerNameInLocalStorage(
   if (typeof window === 'undefined') return;
   if (!gameId || !username) return;
   const value = `${gameId},${username},${playerNumber}`;
-  localStorage.setItem(`fourfury_${gameId}`, value);
+  localStorage.setItem('game_id', value);
   // Also set in cookie for middleware access
-  document.cookie = `fourfury_${gameId}=${value}; path=/`;
+  document.cookie = `game_id=${value}; path=/`;
 }
 
-export function getPlayerNameFromLocalStorage(gameId: string) {
+export function getFourFuryCookie(gameId: string) {
   if (typeof window === 'undefined') return null;
   if (!gameId) return null;
-  const stored = localStorage.getItem(`fourfury_${gameId}`);
+  const stored = localStorage.getItem('game_id');
   return stored || null;
 }
 
-export function delPlayerNameFromLocalStorage(gameId: string) {
-  if (typeof window === 'undefined') return null;
-  if (!gameId) return null;
-  localStorage.removeItem(`fourfury_${gameId}`);
-}
 
 export function validateGameSession(gameId: string): boolean {
   if (typeof window === 'undefined') return false;
-  const stored = getPlayerNameFromLocalStorage(gameId);
+  const stored = getFourFuryCookie(gameId);
   if (!stored) return false;
 
   const [storedGameId, username, playerNumber] = stored.split(',');
@@ -38,7 +33,7 @@ export function validateGameSession(gameId: string): boolean {
 
   // If invalid, clean up storage
   if (!isValid) {
-    delPlayerNameFromLocalStorage(gameId);
+    clearFourFuryCookie();
   }
 
   return isValid;
@@ -46,8 +41,14 @@ export function validateGameSession(gameId: string): boolean {
 
 export function getCurrentPlayer(gameId: string): { username: string; number: number } | null {
   if (typeof window === 'undefined') return null;
-  const stored = getPlayerNameFromLocalStorage(gameId);
+  const stored = getFourFuryCookie(gameId);
   if (!stored) return null;
   const [, username, playerNumber] = stored.split(',');
   return { username, number: parseInt(playerNumber, 10) };
+}
+
+export function clearFourFuryCookie() {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem('game_id');
+
 }

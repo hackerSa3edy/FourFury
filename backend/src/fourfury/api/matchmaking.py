@@ -1,8 +1,11 @@
+import logging
 from typing import Optional
 
 from ..cache import redis_client
 from .crud import get_game_by_id, join_new_game, start_new_game
 from .models import Game, GameMode
+
+logger = logging.getLogger(__name__)
 
 MATCHMAKING_QUEUE_KEY = "matchmaking:queue"
 PLAYER_MATCH_STATUS_KEY = "matchmaking:status:{}"
@@ -101,3 +104,30 @@ class MatchMaker:
     async def get_player_status(self, player_username: str) -> Optional[str]:
         key = PLAYER_MATCH_STATUS_KEY.format(player_username)
         return await self.redis.get(key)
+
+    async def create_rematch(self, original_game: Game) -> Optional[Game]:
+        """Creates a new game with the same players for a rematch."""
+        try:
+            # Create new game with first player
+            new_game = await start_new_game(
+                original_game.player_1_username,
+                original_game.player_1,
+                mode=original_game.mode,
+            )
+
+            if (
+                new_game
+                and original_game.player_2_username
+                and original_game.player_2
+            ):
+                # Add second player immediately
+                new_game = await join_new_game(
+                    new_game,
+                    original_game.player_2_username,
+                    original_game.player_2,
+                )
+
+            return new_game
+        except Exception as e:
+            logger.error(f"Error creating rematch: {e}")
+            return None

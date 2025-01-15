@@ -9,8 +9,8 @@ export function middleware(request: NextRequest) {
 
   // Check for game-related routes
   if (request.nextUrl.pathname.startsWith('/games/')) {
-    const gameId = request.nextUrl.pathname.split('/')[2]
-    const storedGame = request.cookies.get(`fourfury_${gameId}`)
+    // const gameId = request.nextUrl.pathname.split('/')[2]
+    const storedGame = request.cookies.get(`game_id`)
 
     // Allow access to join page without authentication
     if (request.nextUrl.pathname.endsWith('/join')) {
