@@ -4,9 +4,16 @@ import { BACKEND_API_BASE_URL, SOCKETIO_BASE_URL } from "@/constants";
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { io, Socket } from "socket.io-client";
-import { HomeButton, RematchButton, ReplayButton } from "@/components/buttons";
+import { HomeButton } from "@/components/buttons";
 
-import { getFourFuryCookie, clearFourFuryCookie, setFourFuryCookie, getCurrentPlayer } from "@/utils/localStorageUtils";
+import { getFourFuryCookie } from "@/utils/localStorageUtils";
+import { WaitingPlayerToJoin } from "@/components/WaitingPlayerToJoin";
+import { GameInfo } from "@/components/GameInfo";
+import { GameBoard } from "@/components/GameBoard";
+import { GameStatus } from "@/components/GameStatus";
+import { ExitWarningDialog } from "@/components/ExitWarningDialog";
+import { useGamePresence } from '@/hooks/useGamePresence';
+import { useGameRematch } from '@/hooks/useGameRematch';
 
 interface MovesData {
     row: number;
@@ -35,19 +42,6 @@ interface SocketStatus {
     error: string | null;
 }
 
-interface GameInfoProps {
-    gameData: GameData;
-    handleReplayGame: () => void;
-    handleRematch: () => void;
-    handleCancelRematch: () => void; // Add this line
-    rematchStatus: string;
-}
-
-interface RematchRequest {
-    requestedBy: string;
-    requesterName: string;
-}
-
 export default function PlayGame() {
     const { id } = useParams();
     const [data, setData] = useState<GameData | null>(null);
@@ -58,11 +52,23 @@ export default function PlayGame() {
         error: null
     });
     const [replayInProgress, setReplayInProgress] = useState(false);
-    const [rematchStatus, setRematchStatus] = useState<string>('idle');
-    const [rematchRequest, setRematchRequest] = useState<RematchRequest | null>(null);
-    const [rematchError, setRematchError] = useState<string | null>(null); // Add this line
     const [showExitWarning, setShowExitWarning] = useState(false);
     const router = useRouter();
+    const { presenceState, countdowns } = useGamePresence(socket, data);
+
+    const playerName = useMemo(() => {
+        return getFourFuryCookie(Array.isArray(id) ? id[0] : id || '')?.split(',')[1];
+    }, [id]);
+
+    const {
+        rematchStatus,
+        rematchRequest,
+        rematchError,
+        handleRematch,
+        handleCancelRematch,
+        handleAcceptRematch,
+        handleDeclineRematch,
+    } = useGameRematch(socket, Array.isArray(id) ? id[0] : id || '', playerName);
 
     const handleReplayGame = useCallback(() => {
         if (replayInProgress || !data?.movees) return;
@@ -95,22 +101,6 @@ export default function PlayGame() {
         }, 450);
     }, [replayInProgress, data]);
 
-    const handleRematch = useCallback(() => {
-        if (!socket || !data) return;
-        setRematchStatus('requesting');
-        console.log('Requesting rematch:', data.id);
-        socket.emit('request_rematch', data.id);
-    }, [socket, data]);
-
-    const handleCancelRematch = useCallback(() => {
-        if (!socket || !data?.id) return;
-        socket.emit('cancel_rematch', data.id);
-        setRematchStatus('idle');
-    }, [socket, data?.id]);
-
-    const playerName = useMemo(() => {
-        return getFourFuryCookie(Array.isArray(id) ? id[0] : id || '')?.split(',')[1];
-    }, [id]);
 
     // Separate data fetching effect
     useEffect(() => {
@@ -194,83 +184,6 @@ export default function PlayGame() {
         };
     }, [data?.id]);
 
-    useEffect(() => {
-        if (!socket) return;
-
-        socket.on('rematch_requested', (data: RematchRequest) => {
-            if (data.requestedBy !== playerName) {
-                setRematchRequest(data);
-            } else {
-                setRematchStatus('waiting');
-            }
-        });
-
-        socket.on('rematch_started', (data) => {
-            console.log('Rematch started:', data);
-            const currGameId = Array.isArray(id) ? id[0] : id || '';
-            const player = getCurrentPlayer(currGameId);
-
-            if (!player) {
-                console.error('No player found in local storage');
-                setSocketStatus(prev => ({
-                    ...prev,
-                    error: "Session expired. Please start a new game."
-                }));
-                return;
-            }
-
-            clearFourFuryCookie();
-            setFourFuryCookie(data.game_id, player.username, player.number as 1 | 2);
-            router.push(`/games/${data.game_id}`);
-        });
-
-        socket.on('rematch_declined', () => {
-            setRematchStatus('declined');
-            setRematchRequest(null);  // Clear the rematch request
-            setTimeout(() => {
-                setRematchStatus('idle');
-                router.push('/');
-            }, 2000);
-        });
-
-        socket.on('rematch_error', (data) => {
-            setRematchError(data.message);
-            setRematchStatus('idle');
-            setRematchRequest(null);
-            setTimeout(() => {
-                setRematchError(null);
-                router.push('/');
-            }, 3500);
-        });
-
-        socket.on('rematch_cancelled', () => {
-            setRematchStatus('idle');
-            setRematchRequest(null);  // Clear the rematch request
-        });
-
-        return () => {
-            socket.off('rematch_requested');
-            socket.off('rematch_started');
-            socket.off('rematch_declined');
-            socket.off('rematch_error');
-            socket.off('rematch_cancelled');
-        };
-    }, [socket, playerName, router, id]);
-
-    const handleAcceptRematch = useCallback(() => {
-        if (!socket || !id) return;
-        const gameId = Array.isArray(id) ? id[0] : id;
-        socket.emit('accept_rematch', gameId);
-        setRematchRequest(null);
-    }, [socket, id]);
-
-    const handleDeclineRematch = useCallback(() => {
-        if (!socket || !id) return;
-        const gameId = Array.isArray(id) ? id[0] : id;
-        socket.emit('decline_rematch', gameId);
-        setRematchRequest(null);
-    }, [socket, id]);
-
     // Add useEffect for handling page exit
     useEffect(() => {
         const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -329,7 +242,7 @@ export default function PlayGame() {
         );
     }
 
-    if (!data || !playerName) return (
+    if (!data || !playerName || (playerName !== data?.player_1_username && !data?.player_2_username)) return (
         <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 backdrop-blur-md z-50">
             <div className="p-8 rounded-xl bg-white/90 dark:bg-slate-800/90 shadow-2xl border border-red-200 dark:border-red-800">
                 <div className="flex flex-col items-center space-y-4">
@@ -352,15 +265,21 @@ export default function PlayGame() {
     return (
         <>
             <HomeButton onClick={handleExitWarning} />
-            <div className="min-h-screen w-full bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-gray-900 dark:to-cyan-950">
-                <div className="container mx-auto px-4 py-8 max-w-7xl">
-                    <div className="flex flex-col space-y-6">
+            <div className="min-h-screen w-full flex flex-col
+                bg-gradient-to-br from-cyan-50/95 via-white/95 to-cyan-100/95
+                dark:from-gray-900/95 dark:via-gray-800/95 dark:to-cyan-900/95
+                overflow-x-hidden
+            ">
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 max-w-7xl">
+                    <div className="flex flex-col space-y-4 sm:space-y-6 lg:space-y-8">
                         <GameInfo
                             gameData={data}
                             handleReplayGame={handleReplayGame}
                             handleRematch={handleRematch}
                             handleCancelRematch={handleCancelRematch}
                             rematchStatus={rematchStatus}
+                            presenceState={presenceState}
+                            countdowns={countdowns}
                         />
                         <GameStatus gameData={data} playerName={playerName} />
                         <GameBoard gameData={data} socket={socket} playerName={playerName} />
@@ -457,294 +376,3 @@ export default function PlayGame() {
         </>
     );
 }
-
-function WaitingPlayerToJoin({ id }: { id: string }) {
-    const [isCopied, setIsCopied] = useState(false);
-    const frontendBaseUrl = window.location.origin;
-    const linkToShare = `${frontendBaseUrl}/games/${id}/join/`;
-
-    const handleCopyLink = () => {
-        navigator.clipboard.writeText(linkToShare);
-        setIsCopied(true);
-        setTimeout(() => setIsCopied(false), 1000);
-    };
-
-    return (
-        <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-gray-900 dark:to-cyan-950">
-            <div className="w-full max-w-2xl mx-4 p-8 rounded-xl bg-white/90 dark:bg-slate-800/90 shadow-2xl border border-cyan-200 dark:border-cyan-800">
-                <div className="text-center space-y-6">
-                    <h2 className="text-2xl font-bold text-cyan-700 dark:text-cyan-300">Waiting for player to join</h2>
-                    <div className="relative">
-                        <p className="text-slate-600 dark:text-slate-300 mb-4">
-                            Share this link with a friend to join (click to copy):
-                        </p>
-                        <button
-                            onClick={handleCopyLink}
-                            className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 transition-colors break-all"
-                        >
-                            {linkToShare}
-                        </button>
-                        <div
-                            className={`
-                                absolute left-1/2 transform -translate-x-1/2 mt-4
-                                bg-cyan-500 text-white px-3 py-1 rounded
-                                transition-opacity duration-300
-                                ${isCopied ? "opacity-100" : "opacity-0"}
-                            `}
-                        >
-                            Copied!
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-const GameInfo = React.memo(({ gameData, handleReplayGame, handleRematch, handleCancelRematch, rematchStatus }: GameInfoProps) => {
-    const humanFinishedAt = gameData.finished_at ? new Date(gameData.finished_at).toLocaleString() : null;
-
-    return (
-        <div className="rounded-xl p-6 bg-white/90 dark:bg-slate-800/90 shadow-xl border border-cyan-200 dark:border-cyan-800">
-            <div className="text-center space-y-3">
-                <h1 className="text-3xl font-bold text-cyan-700 dark:text-cyan-300">Connect4 BATTLE</h1>
-                <div className="text-xl">
-                    <span className="font-semibold text-slate-700 dark:text-slate-300">Game: </span>
-                    <span className="text-red-500 dark:text-purple-500">{gameData.player_1}</span>
-                    <span className="text-slate-700 dark:text-slate-300"> vs </span>
-                    <span className="text-yellow-500 dark:text-blue-500">{gameData.player_2}</span>
-                </div>
-                <div className="text-slate-600 dark:text-slate-400">
-                    <p>Move #{gameData.move_number}</p>
-                    {humanFinishedAt && <p>Game finished at {humanFinishedAt}</p>}
-                </div>
-
-                {humanFinishedAt && (
-                    <div className="relative mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-200/20 to-transparent dark:via-cyan-700/20 animate-pulse-slow"></div>
-
-                        <RematchButton
-                            rematchStatus={rematchStatus}
-                            onRematch={handleRematch}
-                            onCancelRematch={handleCancelRematch}
-                        />
-
-                        <ReplayButton onReplay={handleReplayGame} />
-                    </div>
-                )}
-
-                {rematchStatus === 'waiting' && (
-                    <div className="mt-4 text-cyan-600 dark:text-cyan-400 animate-pulse">
-                        Waiting for opponent to accept rematch...
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-});
-
-const GameBoard = React.memo(({ gameData, socket, playerName }: { gameData: GameData; socket: Socket | null; playerName: string }) => {
-    const [highlightedColumn, setHighlightedColumn] = useState<number | null>(null);
-    const handleColumnHover = useCallback((colIndex: number) => setHighlightedColumn(colIndex), []);
-    const handleColumnLeave = useCallback(() => setHighlightedColumn(null), []);
-
-    const handleCellClick = useCallback((i: number, j: number) => {
-        if (!socket || !socket.connected || !gameData) {
-            console.log('Socket not ready:', {
-                socketExists: !!socket,
-                socketConnected: socket?.connected,
-                gameDataExists: !!gameData
-            });
-            return;
-        }
-
-        const currentPlayer = gameData.move_number % 2 === 0 ? gameData.player_2_username : gameData.player_1_username;
-        const storedName = playerName;
-
-        console.log('Move attempt:', {
-            currentPlayer,
-            storedName,
-            moveNumber: gameData.move_number,
-            column: j
-        });
-
-        // Verify it's the player's turn
-        if (currentPlayer !== storedName) {
-
-            console.log(`Not your turn: ${currentPlayer} !== ${storedName}`);
-            return;
-        }
-
-        const payload = {
-            game_id: gameData.id,
-            player: storedName,
-            column: j
-        };
-
-        try {
-            console.log('Sending move:', payload);
-            socket.emit('move', payload);
-        } catch (error) {
-            console.error('Error sending move:', error);
-        }
-    }, [socket, gameData, playerName]);
-
-    return (
-        <div
-            className={`
-                mt-4 rounded-xl
-                p-5 shadow-2xl
-                bg-cyan-600
-                shadow-cyan-700
-                border-2
-                border-cyan-600
-                dark:bg-inherit
-                dark:shadow-blue-600
-                dark:border-2
-                dark:border-blue-600
-                max-h-[80vh] overflow-y-auto
-            `}
-        >
-            <table className="mx-auto my-0 sm:my-2">
-                <tbody>
-                    {gameData.board.map((row: number[], rowIndex: number) => (
-                        <tr key={`row-${rowIndex}`}>
-                            {row.map((cell: number, colIndex: number) => (
-                                <GameBoardCell
-                                    key={`${rowIndex}-${colIndex}`}
-                                    rowIndex={rowIndex}
-                                    colIndex={colIndex}
-                                    cellValue={cell}
-                                    handleCellClick={handleCellClick}
-                                    playerName={playerName}
-                                    gameData={gameData}
-                                    highlightedColumn={highlightedColumn}
-                                    handleColumnHover={handleColumnHover}
-                                    handleColumnLeave={handleColumnLeave}
-                                />
-                            ))}
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-    );
-});
-
-const GameBoardCell = React.memo(({ rowIndex, colIndex, cellValue, handleCellClick, playerName, gameData, highlightedColumn, handleColumnHover, handleColumnLeave }: {
-    rowIndex: number;
-    colIndex: number;
-    cellValue: number;
-    handleCellClick: (i: number, j: number) => void;
-    playerName: string;
-    gameData: GameData;
-    highlightedColumn: number | null;
-    handleColumnHover: (colIndex: number) => void;
-    handleColumnLeave: () => void;
-}) => {
-    const isHighlighted = useMemo(() => {
-        return !gameData.finished_at &&
-               gameData.next_player_to_move_username === playerName &&
-               highlightedColumn === colIndex &&
-               cellValue === 0;
-    }, [gameData.finished_at, gameData.next_player_to_move_username, playerName, highlightedColumn, colIndex, cellValue]);
-
-    const isPlayable = useMemo(() => {
-        return cellValue === 0 && !gameData.finished_at && gameData.next_player_to_move_username === playerName;
-    }, [cellValue, gameData.finished_at, gameData.next_player_to_move_username, playerName]);
-
-    const cellStyle = useMemo(() => {
-        const baseStyle = `
-            aspect-square w-6 sm:w-8 md:w-10 lg:w-12 xl:w-14
-            rounded-full border-2
-            transform transition-all duration-300
-            hover:scale-105 active:scale-95
-            cursor-${isPlayable ? 'pointer' : 'not-allowed'}
-            ${isHighlighted ? 'border-cyan-400 dark:border-cyan-500 shadow-lg animate-pulse' : 'border-white dark:border-violet-300'}
-        `;
-
-        if (cellValue === 1) return `${baseStyle} bg-gradient-to-br from-red-400 to-red-500 dark:from-purple-500 dark:to-purple-600`;
-        if (cellValue === 2) return `${baseStyle} bg-gradient-to-br from-yellow-300 to-yellow-400 dark:from-blue-500 dark:to-blue-600`;
-        if (cellValue === 3) return `${baseStyle} bg-gradient-to-br from-green-400 to-green-500 dark:from-green-500 dark:to-green-600`;
-
-        return `${baseStyle} ${isHighlighted ? 'bg-gradient-to-br from-cyan-700 to-cyan-800 dark:from-cyan-800 dark:to-cyan-900' : ''}`;
-    }, [cellValue, isHighlighted, isPlayable]);
-
-    return (
-        <td
-            className="p-1"
-            onMouseEnter={() => isPlayable && handleColumnHover(colIndex)}
-            onMouseLeave={handleColumnLeave}
-        >
-            <button
-                className={cellStyle}
-                onClick={() => isPlayable && handleCellClick(rowIndex, colIndex)}
-                aria-label={`Cell ${rowIndex}-${colIndex}`}
-                disabled={!isPlayable}
-            />
-        </td>
-    );
-});
-
-const GameStatus = React.memo(({ gameData, playerName }: { gameData: GameData; playerName: string }) => {
-    const currentPlayer = gameData.move_number % 2 === 0 ? gameData.player_2_username : gameData.player_1_username;
-    const currentPlayerName = gameData.move_number % 2 === 0 ? gameData.player_2 : gameData.player_1;
-    const storedName = playerName;
-    const isMyTurn = currentPlayer === storedName;
-
-    const getWinnerName = () => {
-        if (!gameData.winner) return null;
-        return gameData.winner === 1 ? gameData.player_1_username : gameData.player_2_username;
-    };
-
-    return (
-        <div className="text-center mt-4 space-y-2">
-            <div className="flex items-center justify-center gap-2">
-                {gameData.winner ? (
-                    <span className="text-green-500">
-                        {getWinnerName() === playerName ? 'You won!' : `${gameData.winner === 1 ? gameData.player_1 : gameData.player_2} won!`}
-                    </span>
-                ) : (
-                    <span className={isMyTurn ? 'text-green-500' : 'text-gray-500'}>
-                        {isMyTurn ? 'Your turn' : `Waiting for ${currentPlayerName}`}
-                    </span>
-                )}
-            </div>
-        </div>
-    );
-});
-
-interface ExitWarningDialogProps {
-    setShowExitWarning: (show: boolean) => void;
-    onExit: () => void;
-}
-
-const ExitWarningDialog = ({ setShowExitWarning, onExit }: ExitWarningDialogProps) => (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
-            <h3 className="text-xl font-bold mb-4 text-red-600">Warning!</h3>
-            <p className="mb-6 text-gray-700 dark:text-gray-300">
-                If you leave the game now, you will forfeit and your opponent will be declared the winner. Are you sure?
-            </p>
-            <div className="flex justify-end space-x-4">
-                <button
-                    onClick={() => setShowExitWarning(false)}
-                    className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-                >
-                    Stay
-                </button>
-                <button
-                    onClick={onExit}
-                    className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-                >
-                    Leave Game
-                </button>
-            </div>
-        </div>
-    </div>
-);
-
-GameStatus.displayName = 'GameStatus';
-GameBoardCell.displayName = 'GameBoardCell';
-GameBoard.displayName = 'GameBoard';
-GameInfo.displayName = 'GameInfo';

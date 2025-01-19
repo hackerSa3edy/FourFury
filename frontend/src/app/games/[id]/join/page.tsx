@@ -1,123 +1,173 @@
 "use client";
 
+import React, { useEffect, useState, useCallback } from "react";
+import { useRouter, useParams } from "next/navigation";
 import { BACKEND_API_BASE_URL } from "@/constants";
 import { FourFuryButton } from "@/components/buttons";
 import { PlayerNameInput } from "@/components/input";
-import { useRouter, useParams } from "next/navigation";
+import { setFourFuryCookie } from "@/utils/localStorageUtils";
 import { GameData } from "@/app/games/[id]/page";
-import { useEffect, useState, useCallback } from "react";
-
+import { ErrorState } from "@/types/error";
+import { handleError } from "@/utils/errorHandler";
 import {
-    setFourFuryCookie,
-} from "@/utils/localStorageUtils";
+    ErrorMessage,
+    LoadingSpinner,
+    ConnectionErrorMessage,
+    GameNotFoundError
+} from "@/components/errors";
 
-interface ErrorResponse {
-    message: string;
-    status?: number;
+interface SessionData {
+    username: string;
+    session_id: string;
 }
 
-const ErrorMessage = ({ message }: { message: string }) => (
-    <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50
-        bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4
-        border-l-4 border-red-500 animate-slideDown">
-        <div className="flex items-center space-x-3">
-            <div className="flex-shrink-0">
-                <svg className="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-            </div>
-            <div className="flex-1 md:flex md:justify-between">
-                <p className="text-sm text-gray-700 dark:text-gray-300">{message}</p>
-            </div>
-        </div>
-    </div>
-);
+interface GameState {
+    gameData: GameData | null;
+    isLoading: boolean;
+    isJoining: boolean;
+    error: ErrorState | null;
+}
 
 export default function JoinGame() {
     const { id } = useParams();
     const router = useRouter();
     const [playerName, setPlayerName] = useState("");
-    const [playerUsername, setPlayerUsername] = useState("");
-    const [sessionId, setSessionId] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [isJoining, setIsJoining] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [gameData, setGameData] = useState<GameData | null>(null);
+    const [session, setSession] = useState<SessionData | null>(null);
+    const [, setIsOnline] = useState(true);
+    const [gameState, setGameState] = useState<GameState>({
+        gameData: null,
+        isLoading: true,
+        isJoining: false,
+        error: null
+    });
 
-    const validateName = (name: string): string | undefined => {
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            setIsOnline(window.navigator.onLine);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (gameState.error?.type === 'popup' && gameState.error.duration) {
+            const timeout = setTimeout(() => {
+                setGameState(prev => ({ ...prev, error: null }));
+            }, gameState.error.duration);
+
+            return () => clearTimeout(timeout);
+        }
+    }, [gameState.error]);
+
+    const validateName = useCallback((name: string): string | undefined => {
         if (name.length < 2) return 'Name must be at least 2 characters long';
         if (name.length > 30) return 'Name must be less than 30 characters';
         if (!/^[a-zA-Z0-9\s-_]+$/.test(name)) return 'Name contains invalid characters';
         return undefined;
-    };
-
-    // Add session creation function
-    const createSession = useCallback(async () => {
-        try {
-            const response = await fetch(`${BACKEND_API_BASE_URL}/games/create_session/`, {
-                method: 'POST',
-                credentials: 'include'
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to create session');
-            }
-
-            const data = await response.json();
-            setPlayerUsername(data.username);
-            setSessionId(data.session_id);
-        } catch (error) {
-            console.error('Session creation error:', error);
-            setError('Failed to create session');
-        }
     }, []);
 
-    // Add useEffect for session creation and game data fetching
-    useEffect(() => {
-        async function initialize() {
-            try {
-                await createSession();
-                const response = await fetch(`${BACKEND_API_BASE_URL}/games/${id}/`);
-                if (!response.ok) {
-                    throw new Error('Failed to fetch game data');
-                }
-                const data = await response.json();
+    const createSession = useCallback(async () => {
+        const response = await fetch(`${BACKEND_API_BASE_URL}/games/create_session/`, {
+            method: 'POST',
+            credentials: 'include'
+        });
 
-                if (data.player_2) {
-                    router.replace(`/games/${id}`);
-                    return;
-                }
+        if (!response.ok) throw new Error('Failed to create session');
+        return response.json();
+    }, []);
 
-                setGameData(data);
-            } catch (err) {
-                setError('Failed to load game data. Please try again.');
-                console.error("Error during initialization:", err);
-            } finally {
-                setIsLoading(false);
+    const fetchGameData = useCallback(async (sessionUsername: string) => {
+        try {
+            const response = await fetch(`${BACKEND_API_BASE_URL}/games/${id}/`);
+            if (!response.ok) {
+                const errorData = await response.json();
+                switch (response.status) {
+                    case 401:
+                        throw new Error('Session expired. Please refresh the page.');
+                    case 403:
+                        throw new Error('You are not authorized to view this game.');
+                    case 404:
+                        throw new Error('Game not found.');
+                    case 502:
+                        throw new Error('Server is temporarily unavailable. Please try again later.');
+                    default:
+                        throw new Error(errorData.detail || 'Failed to fetch game data');
+                }
             }
+            const data = await response.json();
+
+            if (data.player_1_username === sessionUsername || data.player_2_username) {
+                router.replace(`/games/${id}`);
+                return null;
+            }
+
+            return data;
+        } catch (error) {
+            throw error;
         }
+    }, [id, router]);
 
+    const initialize = useCallback(async () => {
+        try {
+            const sessionData = await createSession();
+            setSession(sessionData);
+            const gameData = await fetchGameData(sessionData.username);
+            if (gameData) {
+                setGameState(prev => ({ ...prev, gameData }));
+            }
+        } catch (error) {
+            const errorState = handleError(error);
+            setGameState(prev => ({
+                ...prev,
+                error: errorState
+            }));
+        } finally {
+            setGameState(prev => ({ ...prev, isLoading: false }));
+        }
+    }, [createSession, fetchGameData]);
+
+    useEffect(() => {
+        const handleOnline = () => {
+            setIsOnline(true);
+            // Recreate session when connection is restored
+            if (!session) {
+                initialize();
+            }
+        };
+        const handleOffline = () => setIsOnline(false);
+
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, [session, initialize]);
+
+    useEffect(() => {
         initialize();
-    }, [id, router, createSession]);
+    }, [initialize]);
 
-    // Modify handleJoinGame to include session information
-    async function handleJoinGame() {
-        if (isJoining || !sessionId) return;
+    const handleJoinGame = async () => {
+        if (gameState.isJoining || !session) return;
 
         const trimmedName = playerName.trim();
         const validationError = validateName(trimmedName);
 
         if (validationError) {
-            setError(validationError);
+            setGameState(prev => ({
+                ...prev,
+                error: {
+                    message: validationError,
+                    type: 'validation',
+                    duration: 3000
+                }
+            }));
             return;
         }
 
-        setIsJoining(true);
-        setError(null);
+        setGameState(prev => ({ ...prev, isJoining: true, error: null }));
 
         try {
-            console.log('playerName:', playerName);
             const response = await fetch(`${BACKEND_API_BASE_URL}/games/${id}/join/`, {
                 method: "POST",
                 headers: {
@@ -125,108 +175,97 @@ export default function JoinGame() {
                     "Accept": "application/json"
                 },
                 credentials: 'include',
-                body: JSON.stringify({
-                    player_name: trimmedName,
-                })
+                body: JSON.stringify({ player_name: trimmedName })
             });
 
             if (!response.ok) {
-                const errorData = await response.json().catch((): ErrorResponse | null => null);
-                throw new Error(errorData?.message || 'Failed to join game');
+                let errorData;
+                try {
+                    errorData = await response.json();
+                } catch {
+                    throw { status: response.status, detail: 'Invalid server response' };
+                }
+                throw { status: response.status, detail: errorData.detail };
             }
 
             const data = await response.json();
-            setFourFuryCookie(data.id, playerUsername, 2);
+            setFourFuryCookie(data.id, session.username, 2);
             router.push(`/games/${data.id}`);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to join game');
-            console.error("Error joining game:", err);
+            const errorState = handleError(err);
+            setGameState(prev => ({
+                ...prev,
+                error: errorState
+            }));
         } finally {
-            setIsJoining(false);
+            setGameState(prev => ({ ...prev, isJoining: false }));
         }
-    }
+    };
 
-    if (isLoading) {
-        return (
-            <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-blue-50/90 to-blue-200/90 dark:from-gray-900/90 dark:to-blue-900/90 backdrop-blur-sm">
-                <div className="relative p-6 sm:p-8 rounded-2xl bg-white/80 dark:bg-slate-800/80 shadow-xl transform hover:scale-105 transition-all duration-300">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 border-4 border-blue-500 dark:border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                    <div className="text-base sm:text-lg font-medium text-slate-600 dark:text-slate-300 animate-pulse">
-                        Loading...
-                    </div>
-                </div>
-            </div>
-        );
-    }
+    if (gameState.isLoading) return <LoadingSpinner />;
 
-    if (!gameData) {
-        return (
-            <div className="flex flex-1 min-h-full items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-                <div className="p-8 rounded-xl bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm shadow-xl border border-red-100 dark:border-red-900">
-                    <div className="text-red-500 dark:text-red-400 font-medium">Game not found</div>
-                </div>
-            </div>
-        );
+    if (gameState.error?.type === 'fatal') {
+        if (gameState.error.message.includes('Game not found')) {
+            return <GameNotFoundError />;
+        }
+        return <ConnectionErrorMessage message={gameState.error.message} />;
     }
 
     return (
         <>
-            {error && <ErrorMessage message={error} />}
-            <div className="
-                fixed inset-0
-                flex items-center justify-center
-                p-4 sm:p-6 md:p-8
-                bg-gradient-to-br from-cyan-50/90 to-cyan-100/90 dark:from-gray-900/90 dark:to-cyan-900/90
-                backdrop-blur-sm
-            ">
-                <div className="
-                    w-full max-w-lg
-                    p-6 sm:p-8 md:p-10
-                    rounded-2xl
-                    bg-white/80 dark:bg-gray-800/80
-                    shadow-xl
-                    transform transition-all duration-500
-                    hover:scale-[1.02]
-                    border border-cyan-100/50 dark:border-cyan-900/50
-                ">
-                    <div className="text-center space-y-6">
-                        <h2 className="
-                            text-3xl sm:text-4xl font-bold
-                            bg-gradient-to-r from-cyan-600 to-blue-600 dark:from-cyan-400 dark:to-blue-400
-                            bg-clip-text text-transparent
-                            animate-gradient
-                        ">
-                            Join Game
-                        </h2>
-                        <div className="space-y-3">
-                            <h6 className="text-base sm:text-lg text-gray-700 dark:text-gray-200">
-                                <span className="font-semibold text-cyan-600 dark:text-blue-400">
-                                    {gameData.player_1}{" "}
-                                </span>
-                                challenged your skills in Connect4
-                            </h6>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                                Enter your name below to begin the battle
-                            </p>
-                        </div>
-                    </div>
+            {gameState.error?.type === 'popup' && <ErrorMessage message={gameState.error.message} />}
+            <div className="fixed inset-0 w-full h-full bg-gradient-to-br from-emerald-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-blue-900/30 dark:to-emerald-900/30 animate-gradient-slow">
+                {/* Animated Background Elements */}
+                <div className="absolute inset-0 opacity-30 dark:opacity-20">
+                    <div className="absolute top-0 -left-4 w-72 h-72 bg-emerald-300 dark:bg-emerald-600 rounded-full mix-blend-multiply filter blur-xl animate-blob"></div>
+                    <div className="absolute top-0 -right-4 w-72 h-72 bg-blue-300 dark:bg-blue-600 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-2000"></div>
+                    <div className="absolute -bottom-8 left-20 w-72 h-72 bg-indigo-300 dark:bg-indigo-600 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-4000"></div>
+                </div>
 
-                    <div className="mt-8 space-y-6">
-                        <PlayerNameInput
-                            label="Your name"
-                            value={playerName}
-                            onChangeHandler={setPlayerName}
-                            error={undefined}
-                            disabled={isJoining}
-                            autoFocus={true}
-                        />
-                        <div className="pt-2">
-                            <FourFuryButton
-                                label={isJoining ? "Joining..." : "Join Game"}
-                                onClickHandler={() => handleJoinGame()}
-                                disabled={isJoining || !playerName.trim()}
-                            />
+                {/* Grid Pattern Overlay */}
+                <div className="absolute inset-0 bg-grid-pattern opacity-10 dark:opacity-5"></div>
+
+                <div className="relative w-full h-full flex items-center justify-center p-3 sm:p-4 lg:p-6 overflow-auto">
+                    <div className="w-full max-w-[90%] sm:max-w-[440px] lg:max-w-[480px] my-auto bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-blue-500/20 dark:hover:shadow-emerald-500/20 border border-white/20 dark:border-gray-700/50">
+                        <div className="text-center space-y-1 sm:space-y-3">
+                            <h1 className="text-4xl sm:text-5xl font-extrabold bg-gradient-to-r from-red-600 via-blue-600 to-emerald-600 dark:from-red-400 dark:via-blue-400 dark:to-emerald-400 bg-clip-text text-transparent animate-gradient-fast pb-2">
+                                BATTLE TIME!
+                            </h1>
+                            <div className="space-y-3">
+                                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 animate-pulse">
+                                    {gameState.gameData?.player_1}
+                                </h2>
+                                <div className="space-y-2">
+                                    <p className="text-lg font-semibold text-gray-600 dark:text-gray-400 leading-tight">
+                                        is calling you out for an epic showdown.
+                                    </p>
+                                    <p className="text-base text-gray-500 dark:text-gray-400">
+                                        Ready to prove your skill?
+                                    </p>
+                                </div>
+                            </div>
                         </div>
+
+                        <form onSubmit={(e) => {
+                            e.preventDefault();
+                            handleJoinGame();
+                        }} className="mt-6 space-y-4" noValidate>
+                            <PlayerNameInput
+                                label="Your Name"
+                                value={playerName}
+                                onChangeHandler={setPlayerName}
+                                error={undefined}
+                                disabled={gameState.isJoining}
+                                autoFocus={true}
+                            />
+
+                            <FourFuryButton
+                                type="submit"
+                                label={gameState.isJoining ? "Joining Game..." : "Join Game"}
+                                onClickHandler={handleJoinGame}
+                                disabled={gameState.isJoining || !playerName.trim()}
+                            />
+                        </form>
                     </div>
                 </div>
             </div>

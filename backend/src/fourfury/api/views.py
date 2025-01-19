@@ -128,6 +128,15 @@ async def get_game(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Game not found"
         )
+
+    # Check if the requesting user is a player in the game
+    if game.player_2_username is not None:
+        if username != game.player_1_username and username != game.player_2_username:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not a player in this game"
+            )
+
     return game
 
 
@@ -162,6 +171,14 @@ async def join_game(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Game not found"
         )
+
+    # Add check to prevent self-joining
+    if game.player_1_username == username:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot join your own game"
+        )
+
     if game.mode == GameMode.ONLINE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

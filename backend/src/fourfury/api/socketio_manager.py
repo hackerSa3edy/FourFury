@@ -4,14 +4,16 @@ from typing import Any, cast
 
 import socketio  # type: ignore
 
+from datetime import datetime, timezone
 from ..cache import redis_client
 from ..core import AIEngine, calculate_row_by_col
 from ..session import session_manager
 from ..settings import settings
 from .crud import get_game_by_id, start_new_game, update_game
 from .matchmaking import MatchMaker
-from .models import Game, GameMode, MoveInput, get_model_safe
+from .models import Game, GameMode, MoveInput, get_model_safe, PlayerEnum
 from .utils import make_move, validate
+from ..cache import presence_manager
 
 sio = socketio.AsyncServer(
     async_mode="asgi", cors_allowed_origins=settings.ALLOWED_ORIGINS
@@ -91,6 +93,10 @@ async def disconnect(sid: str) -> None:
         username = session.get("username")
         game_id = session.get("game_id")
 
+        if username and game_id:
+            # Handle disconnection presence
+            await presence_update(sid, {"game_id": game_id, "status": "offline"})
+
         if username:
             await matchmaker.cancel_matching(username)
 
@@ -114,6 +120,11 @@ async def join_game(sid: str, game_id: str) -> None:
     if session.get("username"):
         presence_key = f"presence:{game_id}:{session['username']}"
         await redis_client.set(presence_key, "active", ex=300)  # 5 min expiry
+        await presence_manager.set_player_status(game_id, session["username"], "online")
+        await sio.emit("presence_changed", {
+            "username": session["username"],
+            "status": "online"
+        }, room=game_id)
 
 
 @sio.event
@@ -378,3 +389,58 @@ async def cancel_rematch(sid: str, game_id: str) -> None:
             {"message": "Error cancelling rematch request"},
             room=sid,
         )
+
+
+@sio.event
+async def presence_update(sid: str, data: dict[str, Any]) -> None:
+    """Handle client presence updates"""
+    try:
+        session = await sio.get_session(sid)
+        username = session.get("username")
+        game_id = data.get("game_id")
+        status = data.get("status", "offline")
+
+        if not all([username, game_id]):
+            return
+
+        await presence_manager.set_player_status(game_id, username, status)
+
+        if status == "offline":
+            # Start countdown for disconnected player
+            await presence_manager.start_countdown(game_id, username)
+
+            # Notify other players about disconnection and countdown
+            countdown_data = {
+                "username": username,
+                "countdown": presence_manager.PLAYER_TIMEOUT,
+                "type": "disconnect"
+            }
+            await sio.emit("countdown_started", countdown_data, room=game_id)
+
+            # Schedule forfeit check
+            async def check_forfeit():
+                await asyncio.sleep(presence_manager.PLAYER_TIMEOUT)
+                if await presence_manager.is_countdown_active(game_id, username):
+                    # Player didn't reconnect - forfeit
+                    game = await get_game_by_id(game_id)
+                    if game and not game.finished_at:
+                        game.winner = PlayerEnum.PLAYER_2 if username == game.player_1_username else PlayerEnum.PLAYER_1
+                        game.finished_at = datetime.now(timezone.utc)
+                        await update_game(game.id, game.model_dump())
+                        await game_manager.broadcast_game(game)
+
+            asyncio.create_task(check_forfeit())
+        else:
+            # Player reconnected - stop countdown
+            if await presence_manager.is_countdown_active(game_id, username):
+                await presence_manager.stop_countdown(game_id, username)
+                await sio.emit("countdown_cancelled", {"username": username}, room=game_id)
+
+        # Broadcast status update to all players in game
+        await sio.emit("presence_changed", {
+            "username": username,
+            "status": status
+        }, room=game_id)
+
+    except Exception as e:
+        logger.error(f"Presence update error: {e}")

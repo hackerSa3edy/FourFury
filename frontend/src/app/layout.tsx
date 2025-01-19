@@ -1,3 +1,5 @@
+import 'core-js/stable';
+import 'regenerator-runtime/runtime';
 import "./globals.css";
 import { Inter } from "next/font/google";
 import type { Metadata, Viewport } from "next";
@@ -10,7 +12,7 @@ const inter = Inter({
   display: 'swap',
   variable: '--font-inter',
   preload: true,
-  fallback: ['system-ui', 'arial'],
+  fallback: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Arial', 'sans-serif'],
   adjustFontFallback: true,
 });
 
@@ -41,10 +43,12 @@ export const viewport: Viewport = {
     { media: '(prefers-color-scheme: dark)', color: '#0f172a' }
   ],
   width: 'device-width',
+  height: 'device-height',
   initialScale: 1,
   minimumScale: 1,
-  maximumScale: 5,
-  userScalable: true,
+  maximumScale: 2,
+  userScalable: false,
+  viewportFit: 'cover'
 };
 
 interface RootLayoutProps {
@@ -55,22 +59,32 @@ export default function RootLayout({ children }: Readonly<RootLayoutProps>) {
   return (
     <html
       lang="en"
-      className={`h-full ${inter.variable}`}
+      className={`${inter.variable} h-full`}
       suppressHydrationWarning
+      style={{ WebkitTapHighlightColor: 'transparent' }}
     >
       <body
         className={`
-          min-h-screen w-full flex flex-col
-          bg-gradient-to-bl from-blue-50 via-white to-cyan-100
-          dark:from-gray-900 dark:via-gray-800 dark:to-cyan-900
+          min-h-screen max-h-screen w-full
+          bg-gradient-to-br from-blue-50/95 via-white/95 to-cyan-100/95
+          dark:from-gray-900/95 dark:via-gray-800/95 dark:to-cyan-900/95
           transition-colors duration-300
           antialiased font-sans
-          overflow-x-hidden
+          overflow-hidden
+          overscroll-none
+          -webkit-font-smoothing-antialiased
+          -moz-osx-font-smoothing-grayscale
         `}
+        style={{
+          WebkitOverflowScrolling: 'touch',
+          WebkitTextSizeAdjust: '100%',
+          MozTextSizeAdjust: '100%',
+          textSizeAdjust: '100%'
+        }}
       >
         <ThemeProviderWrapper>
-          <main className="flex-1 flex relative">
-            <div className="fixed top-4 right-4 z-50">
+          <main className="relative w-full h-screen overflow-auto">
+            <div className="fixed top-4 right-4 z-50 md:top-6 md:right-6 lg:top-8 lg:right-8">
               <ThemeButton />
             </div>
             {children}

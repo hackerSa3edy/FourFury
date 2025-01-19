@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Add CSS Reset for better cross-browser consistency */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 :root {
   /* Core colors */
   --background: #ffffff;
@@ -23,6 +34,16 @@
   --transition-speed: 150ms;
   --animation-speed: 3s;
   --bounce-height: 0.5rem;
+
+  /* Add cross-browser scroll behavior */
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+
+  /* Prevent text size adjustment on orientation change */
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -35,15 +56,21 @@
   }
 }
 
-/* Base styles */
+/* Enhanced cross-browser base styles */
 @layer base {
   html {
     scroll-behavior: smooth;
+    text-size-adjust: 100%;
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
   }
 
   body {
     min-height: 100vh;
     color: var(--foreground);
+    /* Fallback for older browsers that don’t support color-mix */
+    background: linear-gradient(to bottom right, var(--background), var(--primary));
     background: linear-gradient(
       to bottom right,
       var(--background),
@@ -55,12 +82,19 @@
     text-rendering: optimizeLegibility;
     transition: background-color var(--transition-speed) ease-in-out,
                 color var(--transition-speed) ease-in-out;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
   }
 
+  /* Cross-browser focus styles */
   :focus-visible {
     outline: 2px solid var(--primary);
     outline-offset: 2px;
+    -webkit-transition: outline-offset var(--transition-speed) ease;
     transition: outline-offset var(--transition-speed) ease;
+    -webkit-box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.5);
     box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.5);
   }
 
@@ -70,21 +104,30 @@
   }
 }
 
-/* Animations */
+/* Cross-browser animations */
 @keyframes gradient {
   0%, 100% {
     background-position: 0% 50%;
+    -webkit-transform: translate3d(0,0,0);
     transform: translate3d(0,0,0);
+    will-change: transform;
   }
   50% {
     background-position: 100% 50%;
+    -webkit-transform: translate3d(0,0,0);
     transform: translate3d(0,0,0);
+    will-change: transform;
   }
 }
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@-webkit-keyframes fadeIn {
+  from { opacity: 0; -webkit-transform: translateY(-10px); transform: translateY(-10px); }
+  to { opacity: 1; -webkit-transform: translateY(0); transform: translateY(0); }
 }
 
 @keyframes bounce {
@@ -101,9 +144,10 @@
     animation: bounce-gentle 2s infinite;
 }
 
-/* Utilities */
+/* Cross-browser utility classes */
 @layer utilities {
   .backdrop-blur-lg {
+    -webkit-backdrop-filter: blur(12px);
     backdrop-filter: blur(12px);
   }
 
@@ -123,8 +167,43 @@
 
   .glass {
     background: rgba(255, 255, 255, 0.05);
+    -webkit-backdrop-filter: blur(14px);
     backdrop-filter: blur(14px);
     border: 1px solid rgba(255, 255, 255, 0.15);
+  }
+
+  /* Add touch-action for better mobile handling */
+  .touch-none {
+    touch-action: none;
+  }
+
+  .touch-pan-y {
+    touch-action: pan-y;
+  }
+
+  /* Add responsive layout utilities */
+  .responsive-container {
+    min-height: 100vh;
+    max-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .responsive-content {
+    height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Cross-browser media queries */
+@supports not (backdrop-filter: blur(12px)) {
+  .backdrop-blur-lg {
+    background: rgba(255, 255, 255, 0.9);
+  }
+
+  .glass {
+    background: rgba(255, 255, 255, 0.8);
   }
 }
 
@@ -145,6 +224,29 @@
   }
 }
 
+@media (max-height: 600px) {
+  .responsive-form {
+    transform: scale(0.9);
+  }
+}
+
+@media (max-height: 500px) {
+  .responsive-form {
+    transform: scale(0.85);
+  }
+}
+
+/* Adjust padding for very small screens */
+@media (max-width: 360px) {
+  body {
+    padding: 0.5rem;
+  }
+
+  .responsive-form {
+    padding: 0.75rem !important;
+  }
+}
+
 /* Accessibility */
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {
@@ -156,5 +258,60 @@
 
   .animate-gradient {
     animation: none;
+  }
+}
+
+/* Add cross-browser scroll snapping */
+@supports (scroll-snap-type: y mandatory) {
+  .scroll-snap-container {
+    scroll-snap-type: y mandatory;
+    -webkit-scroll-snap-type: y mandatory;
+  }
+
+  .scroll-snap-item {
+    scroll-snap-align: start;
+    -webkit-scroll-snap-align: start;
+  }
+}
+
+/* Add Firefox-specific styles */
+@-moz-document url-prefix() {
+  .scrollbar-hide {
+    scrollbar-width: none;
+  }
+
+  .custom-scrollbar {
+    scrollbar-color: var(--primary) transparent;
+    scrollbar-width: thin;
+  }
+}
+
+/* Add Safari-specific styles */
+@supports (-webkit-touch-callout: none) {
+  .touch-callout-none {
+    -webkit-touch-callout: none;
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Better touch handling for mobile browsers */
+@media (hover: none) and (pointer: coarse) {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Add IE11 fallbacks */
+@media all and (-ms-high-contrast: none), (-ms-high-contrast: active) {
+  .flex {
+    display: -ms-flexbox;
+  }
+
+  .grid {
+    display: -ms-grid;
   }
 }

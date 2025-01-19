@@ -9,6 +9,7 @@ import { setFourFuryCookie, clearFourFuryCookie } from "@/utils/localStorageUtil
 import { ErrorBoundary } from 'react-error-boundary';
 import io, { Socket } from 'socket.io-client';
 import ModeButton from '@/components/mode-button';
+import { handleError } from '@/utils/errorHandler';
 
 interface GameResponse {
     id: string;
@@ -27,6 +28,13 @@ interface FormState {
 interface ErrorFallbackProps {
     error: Error;
     resetErrorBoundary: () => void;
+}
+
+interface GameError {
+    status?: number;
+    detail?: string;
+    message?: string;
+    name?: string;
 }
 
 const ErrorFallback = ({ error, resetErrorBoundary }: ErrorFallbackProps) => {
@@ -71,6 +79,7 @@ interface MatchmakingState {
 
 const StartGame = memo(function StartGame() {
     const router = useRouter();
+    const [, setIsOnline] = useState(true);
     const [formState, setFormState] = useState<FormState>({
         playerName: "",
         playerUsername: "",
@@ -109,12 +118,49 @@ const StartGame = memo(function StartGame() {
         };
     }, [socket]);
 
+    // Add passive event listeners for better performance
+    useEffect(() => {
+        const options = { passive: true };
+        document.addEventListener('touchstart', () => {}, options);
+        document.addEventListener('touchmove', () => {}, options);
+        return () => {
+            document.removeEventListener('touchstart', () => {});
+            document.removeEventListener('touchmove', () => {});
+        };
+    }, []);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            setIsOnline(window.navigator.onLine);
+        }
+    }, []);
+
     const validateName = useCallback((name: string): string | undefined => {
         if (name.length < 2) return 'Name must be at least 2 characters long';
         if (name.length > 30) return 'Name must be less than 30 characters';
         if (!/^[a-zA-Z0-9\s-_]+$/.test(name)) return 'Name contains invalid characters';
         return undefined;
     }, []);
+
+    const handleGameError = useCallback((err: unknown) => {
+        const errorState = handleError(err);
+        setFormState(prev => ({
+            ...prev,
+            error: errorState.message,
+            isSubmitting: false,
+            isMatchmaking: false
+        }));
+
+        // Log error for monitoring
+        console.error("Game error:", {
+            error: err,
+            status: (err as GameError)?.status,
+            detail: (err as GameError)?.detail,
+            timestamp: new Date().toISOString(),
+            mode,
+            aiDifficulty: mode === "ai" ? aiDifficulty : undefined
+        });
+    }, [mode, aiDifficulty]);
 
     const initializeSocketConnection = useCallback(() => {
         try {
@@ -131,6 +177,12 @@ const StartGame = memo(function StartGame() {
                 timeout: 10000
             });
 
+            // Common error handler for socket events
+            const handleSocketError = (message: string) => {
+                handleGameError({ status: 500, detail: message });
+                newSocket.disconnect();
+            };
+
             newSocket.on('connect', () => {
                 setMatchmakingState({
                     status: 'waiting',
@@ -140,16 +192,7 @@ const StartGame = memo(function StartGame() {
             });
 
             newSocket.on('connect_error', (error) => {
-                setMatchmakingState({
-                    status: 'error',
-                    message: `Failed to connect to server${error.message ? error.message : ""}`
-                });
-                setFormState(prev => ({
-                    ...prev,
-                    error: 'Connection failed. Please try again.',
-                    isMatchmaking: false
-                }));
-                newSocket.disconnect();
+                handleSocketError(`Failed to connect to server: ${error.message}`);
             });
 
             newSocket.on('matching_status', (data) => {
@@ -183,16 +226,7 @@ const StartGame = memo(function StartGame() {
             });
 
             newSocket.on('matching_error', (data) => {
-                setMatchmakingState({
-                    status: 'error',
-                    message: data.message
-                });
-                setFormState(prev => ({
-                    ...prev,
-                    error: data.message,
-                    isMatchmaking: false
-                }));
-                newSocket.disconnect();
+                handleSocketError(data.message);
             });
 
             newSocket.on('matching_cancelled', () => {
@@ -208,17 +242,9 @@ const StartGame = memo(function StartGame() {
 
             setSocket(newSocket);
         } catch {
-            setMatchmakingState({
-                status: 'error',
-                message: 'Failed to initialize connection'
-            });
-            setFormState(prev => ({
-                ...prev,
-                error: 'Failed to connect to matchmaking server',
-                isMatchmaking: false
-            }));
+            handleGameError({ status: 500, detail: 'Failed to initialize connection' });
         }
-    }, [formState.playerUsername, router, formState.playerName, formState.sessionId]);
+    }, [formState.playerUsername, formState.playerName, formState.sessionId, handleGameError, router]);
 
     // Add session creation function
     const createSession = useCallback(async () => {
@@ -229,7 +255,7 @@ const StartGame = memo(function StartGame() {
             });
 
             if (!response.ok) {
-                throw new Error('Failed to create session');
+                throw { status: response.status, detail: 'Failed to create session' };
             }
 
             const data = await response.json();
@@ -239,26 +265,39 @@ const StartGame = memo(function StartGame() {
                 sessionId: data.session_id,
             }));
         } catch (error) {
-            console.error('Session creation error:', error);
-            setFormState(prev => ({
-                ...prev,
-                error: 'Failed to create session'
-            }));
+            handleGameError(error);
         }
-    }, []);
+    }, [handleGameError]);
 
     // Add useEffect for session creation
     useEffect(() => {
         createSession();
     }, [createSession]);
 
+    // Add online/offline detection and session recreation
+    useEffect(() => {
+        const handleOnline = () => {
+            setIsOnline(true);
+            // Recreate session when connection is restored
+            if (!formState.sessionId) {
+                createSession();
+            }
+        };
+        const handleOffline = () => setIsOnline(false);
+
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, [formState.sessionId, createSession]);
+
     const handleStartGame = useCallback(async () => {
         const now = Date.now();
         if (now - lastSubmissionTime < SUBMISSION_COOLDOWN) {
-            setFormState(prev => ({
-                ...prev,
-                error: 'Please wait before submitting again'
-            }));
+            handleGameError({ status: 429, detail: 'Please wait before submitting again' });
             return;
         }
 
@@ -266,10 +305,7 @@ const StartGame = memo(function StartGame() {
         const validationError = validateName(trimmedName);
 
         if (validationError) {
-            setFormState(prev => ({
-                ...prev,
-                error: validationError
-            }));
+            handleGameError({ status: 400, detail: validationError });
             return;
         }
 
@@ -292,73 +328,51 @@ const StartGame = memo(function StartGame() {
 
         try {
             startTransition(async () => {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
-
                 try {
                     const response = await fetch(`${BACKEND_API_BASE_URL}/games/start/`, {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",
-                            "Accept": "application/json",
-                            // Add SameSite attribute handling
-                            // "Cookie": document.cookie // Explicitly include cookies
+                            "Accept": "application/json"
                         },
-                        credentials: 'include', // This is correct but needs server-side CORS support
+                        credentials: 'include',
                         body: JSON.stringify({
                             player_name: trimmedName,
                             mode,
                             ai_difficulty: mode === "ai" ? aiDifficulty : undefined,
                             timestamp: new Date().toISOString()
                         }),
-                        signal: controller.signal
                     });
 
-                    clearTimeout(timeoutId);
-
                     if (!response.ok) {
-                        const errorData = await response.json().catch(() => null);
-                        if (response.status === 401) {
-                            setFormState(prev => ({
-                                ...prev,
-                                error: 'Please log in to continue. Your session may have expired.',
-                                isSubmitting: false
-                            }));
-                            return;
-                        }
-                        throw new Error(errorData?.message || 'Failed to start game');
+                        const errorData = await response.json().catch(() => ({}));
+                        throw {
+                            status: response.status,
+                            detail: errorData.detail || 'Failed to start game'
+                        };
                     }
 
-                    const data = (await response.json()) as GameResponse;
-
-                    // Store game session data in local storage
+                    const data = await response.json() as GameResponse;
                     setFourFuryCookie(data.id, formState.playerUsername, 1);
-
                     router.push(`/games/${data.id}`);
                 } catch (error) {
-                    if (error instanceof Error) {
-                        if (error.name === 'AbortError') {
-                            throw new Error('Request timed out. Please try again.');
-                        }
-                        throw error;
-                    }
-                    throw new Error('An unexpected error occurred');
+                    handleGameError(error);
                 }
             });
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
-            setFormState(prev => ({
-                ...prev,
-                error: errorMessage
-            }));
-            console.error("Game start error:", { error: err, timestamp: new Date().toISOString() });
-        } finally {
-            setFormState(prev => ({
-                ...prev,
-                isSubmitting: false
-            }));
+        } catch (error) {
+            handleGameError(error);
         }
-    }, [formState.playerName, formState.playerUsername, router, lastSubmissionTime, mode, aiDifficulty, initializeSocketConnection, validateName]);
+    }, [
+        formState.playerName,
+        formState.playerUsername,
+        lastSubmissionTime,
+        mode,
+        aiDifficulty,
+        router,
+        validateName,
+        initializeSocketConnection,
+        handleGameError
+    ]);
 
     const handleCancelMatchmaking = useCallback(() => {
         if (socket) {
@@ -432,113 +446,144 @@ const StartGame = memo(function StartGame() {
             }}
         >
             {formState.error && <ErrorMessage message={formState.error} />}
-            <div className="w-full min-h-screen flex items-center justify-center p-4">
-                <div className="w-full max-w-md mx-auto
-                    bg-white/90 dark:bg-gray-800/90 backdrop-blur-lg
-                    p-6 rounded-2xl shadow-2xl
-                    transition-all duration-300 hover:shadow-3xl
-                    transform hover:-translate-y-1"
-                >
-                    <div className="text-center space-y-3">
-                        <h1 className="text-4xl font-bold
-                            bg-gradient-to-r from-emerald-600 to-blue-600
-                            dark:from-emerald-400 dark:to-blue-400
-                            bg-clip-text text-transparent animate-gradient">
-                            Four Fury
-                        </h1>
-                        <h2 className="text-lg font-medium text-gray-800 dark:text-gray-300">
-                            Start Your Adventure
-                        </h2>
-                    </div>
+            <div className="fixed inset-0 w-full h-full
+                bg-gradient-to-br from-emerald-50 via-blue-50 to-indigo-50
+                dark:from-gray-900 dark:via-blue-900/30 dark:to-emerald-900/30
+                animate-gradient-slow">
+                {/* Animated Background Elements */}
+                <div className="absolute inset-0 opacity-30 dark:opacity-20">
+                    <div className="absolute top-0 -left-4 w-72 h-72 bg-emerald-300 dark:bg-emerald-600 rounded-full mix-blend-multiply filter blur-xl animate-blob"></div>
+                    <div className="absolute top-0 -right-4 w-72 h-72 bg-blue-300 dark:bg-blue-600 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-2000"></div>
+                    <div className="absolute -bottom-8 left-20 w-72 h-72 bg-indigo-300 dark:bg-indigo-600 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-4000"></div>
+                </div>
 
-                    <form
-                        onSubmit={(e) => {
-                            e.preventDefault();
-                            handleStartGame();
-                        }}
-                        className="mt-6 space-y-4"
-                        noValidate
-                    >
-                        <PlayerNameInput
-                            label="Your Name"
-                            value={formState.playerName}
-                            onChangeHandler={handleNameChange}
-                            error={undefined}
-                            disabled={formState.isSubmitting}
-                        />
+                {/* Grid Pattern Overlay */}
+                <div
+                    className="absolute inset-0 bg-grid-pattern opacity-10 dark:opacity-5"
+                    style={{
+                        WebkitBackfaceVisibility: 'hidden',
+                        backfaceVisibility: 'hidden',
+                        WebkitPerspective: '1000',
+                        perspective: '1000',
+                        WebkitTransform: 'translate3d(0,0,0)',
+                        transform: 'translate3d(0,0,0)'
+                    }}
+                ></div>
 
-                        <div className="space-y-4">
-                            <div className="text-center relative">
-                                <h3 className="text-lg sm:text-xl font-semibold mb-3
-                                    bg-gradient-to-r from-emerald-600 to-blue-600
-                                    dark:from-emerald-400 dark:to-blue-400
-                                    bg-clip-text text-transparent">
-                                    Choose Your Battle
-                                </h3>
-                                <div className="relative">
-                                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/10 to-blue-600/10
-                                        dark:from-emerald-400/5 dark:to-blue-400/5 rounded-lg transform -skew-y-1"></div>
-                                    <p className="text-sm sm:text-base text-gray-800 dark:text-gray-400
-                                        py-2 px-4 relative z-10 leading-relaxed">
-                                        Select your preferred way to play
-                                    </p>
-                                </div>
-                            </div>
+                <div className="relative w-full h-full flex items-center justify-center p-3 sm:p-4 lg:p-6 overflow-auto">
+                    <div className="w-full max-w-[90%] sm:max-w-[440px] lg:max-w-[480px]
+                        my-auto
+                        bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg
+                        p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-2xl
+                        transition-all duration-300 hover:shadow-blue-500/20 dark:hover:shadow-emerald-500/20
+                        scale-100 hover:scale-[1.02]
+                        border border-white/20 dark:border-gray-700/50">
 
-                            <div className="flex justify-center gap-4">
-                                {["human", "online", "ai"].map((gameMode) => (
-                                    <ModeButton
-                                        key={gameMode}
-                                        mode={gameMode}
-                                        currentMode={mode}
-                                        onClick={setMode}
-                                    />
-                                ))}
-                            </div>
-
-                            {mode === "ai" && (
-                                <div className="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg">
-                                    <label className="block text-center mb-3">
-                                        <span className="text-sm font-medium text-gray-800 dark:text-gray-200">AI Difficulty</span>
-                                    </label>
-                                    <div className="flex justify-center gap-2">
-                                        {[1, 2, 3, 4, 5].map((level) => (
-                                            <button
-                                                key={level}
-                                                type="button"
-                                                onClick={() => setAiDifficulty(level)}
-                                                className={`w-10 h-10 rounded-full transition-all duration-300
-                                                    ${aiDifficulty === level
-                                                        ? "bg-gradient-to-r from-emerald-600 to-blue-600 text-white transform scale-110"
-                                                        : "bg-white dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200"
-                                                    }`}
-                                            >
-                                                {level}
-                                            </button>
-                                        ))}
-                                    </div>
-                                    <div className="text-center mt-2 text-sm text-gray-800 dark:text-gray-300">
-                                        {aiDifficulty === 1 && "Beginner"}
-                                        {aiDifficulty === 2 && "Easy"}
-                                        {aiDifficulty === 3 && "Medium"}
-                                        {aiDifficulty === 4 && "Hard"}
-                                        {aiDifficulty === 5 && "Expert"}
-                                    </div>
-                                </div>
-                            )}
+                        {/* Optimize spacing for smaller screens */}
+                        <div className="text-center space-y-1 sm:space-y-3">
+                            <h1 className="text-3xl sm:text-4xl font-bold
+                                bg-gradient-to-r from-emerald-600 to-blue-600
+                                dark:from-emerald-400 dark:to-blue-400
+                                bg-clip-text text-transparent animate-gradient">
+                                Four Fury
+                            </h1>
+                            <h2 className="text-base sm:text-lg font-medium text-gray-800 dark:text-gray-300">
+                                Start Your Adventure
+                            </h2>
                         </div>
 
-                        {renderMatchmakingOverlay()}
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                handleStartGame();
+                            }}
+                            className="mt-3 sm:mt-6 space-y-2 sm:space-y-4"
+                            noValidate
+                        >
+                            <PlayerNameInput
+                                label="Your Name"
+                                value={formState.playerName}
+                                onChangeHandler={handleNameChange}
+                                error={undefined}
+                                disabled={formState.isSubmitting}
+                            />
 
-                        <FourFuryButton
-                            type="submit"
-                            label={formState.isSubmitting ? "Starting Game..." : "Start Game"}
-                            onClickHandler={handleStartGame}
-                            disabled={formState.isSubmitting || !formState.playerName.trim()}
-                        />
-                    </form>
+                            <div className="space-y-2 sm:space-y-4">
+                                <div className="text-center relative">
+                                    <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3
+                                        bg-gradient-to-r from-emerald-600 to-blue-600
+                                        dark:from-emerald-400 dark:to-blue-400
+                                        bg-clip-text text-transparent">
+                                        Choose Your Battle
+                                    </h3>
+                                    <div className="relative">
+                                        <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/10 to-blue-600/10
+                                            dark:from-emerald-400/5 dark:to-blue-400/5 rounded-lg transform -skew-y-1"></div>
+                                        <p className="text-sm text-gray-800 dark:text-gray-400
+                                            py-1.5 sm:py-2 px-3 sm:px-4 relative z-10">
+                                            Select your preferred way to play
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-center gap-1 xs:gap-2 sm:gap-3 md:gap-4 flex-wrap sm:flex-nowrap">
+                                    {["human", "online", "ai"].map((gameMode) => (
+                                        <ModeButton
+                                            key={gameMode}
+                                            mode={gameMode}
+                                            currentMode={mode}
+                                            onClick={setMode}
+                                        />
+                                    ))}
+                                </div>
+
+                                {mode === "ai" && (
+                                    <div className="bg-gray-100 dark:bg-gray-700 p-3 sm:p-4 rounded-lg">
+                                        <label className="block text-center mb-2 sm:mb-3">
+                                            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                                                AI Difficulty
+                                            </span>
+                                        </label>
+                                        <div className="flex justify-center gap-1.5 sm:gap-2">
+                                            {[1, 2, 3, 4, 5].map((level) => (
+                                                <button
+                                                    key={level}
+                                                    type="button"
+                                                    onClick={() => setAiDifficulty(level)}
+                                                    className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full transition-all duration-300
+                                                        ${aiDifficulty === level
+                                                            ? "bg-gradient-to-r from-emerald-600 to-blue-600 text-white transform scale-110"
+                                                            : "bg-white dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200"
+                                                        }`}
+                                                >
+                                                    {level}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <div className="text-center mt-2 text-xs sm:text-sm text-gray-800 dark:text-gray-300">
+                                            {aiDifficulty === 1 && "Beginner"}
+                                            {aiDifficulty === 2 && "Easy"}
+                                            {aiDifficulty === 3 && "Medium"}
+                                            {aiDifficulty === 4 && "Hard"}
+                                            {aiDifficulty === 5 && "Expert"}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {renderMatchmakingOverlay()}
+
+                            <FourFuryButton
+                                type="submit"
+                                label={formState.isSubmitting ? "Starting Game..." : "Start Game"}
+                                onClickHandler={handleStartGame}
+                                disabled={formState.isSubmitting || !formState.playerName.trim()}
+                            />
+                        </form>
+                    </div>
                 </div>
             </div>
+            {renderMatchmakingOverlay()}
         </ErrorBoundary>
     );
 });
