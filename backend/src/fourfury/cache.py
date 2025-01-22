@@ -67,7 +67,9 @@ class PresenceManager:
         self.PRESENCE_PREFIX = "presence"
         self.COUNTDOWN_PREFIX = "countdown"
 
-    async def set_player_status(self, game_id: str, username: str, status: str) -> None:
+    async def set_player_status(
+        self, game_id: str, username: str, status: str
+    ) -> None:
         """Set player's status with TTL"""
         key = f"{self.PRESENCE_PREFIX}:{game_id}:{username}"
         await self.redis.setex(key, self.PLAYER_TIMEOUT, status)
@@ -97,6 +99,7 @@ class PresenceManager:
         """Get remaining countdown time"""
         key = f"{self.COUNTDOWN_PREFIX}:{game_id}:{username}"
         return await self.redis.ttl(key)
+
 
 # Initialize presence manager
 presence_manager = PresenceManager(redis_client)

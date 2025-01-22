@@ -1,19 +1,19 @@
 import asyncio
 import logging
+from datetime import datetime, timezone
 from typing import Any, cast
 
 import socketio  # type: ignore
 
-from datetime import datetime, timezone
-from ..cache import redis_client
-from ..core import AIEngine, calculate_row_by_col
+from ..ai.engine import AIEngine
+from ..cache import presence_manager, redis_client
+from ..core import calculate_row_by_col
 from ..session import session_manager
 from ..settings import settings
 from .crud import get_game_by_id, start_new_game, update_game
 from .matchmaking import MatchMaker
-from .models import Game, GameMode, MoveInput, get_model_safe, PlayerEnum
+from .models import Game, GameMode, MoveInput, PlayerEnum, get_model_safe
 from .utils import make_move, validate
-from ..cache import presence_manager
 
 sio = socketio.AsyncServer(
     async_mode="asgi", cors_allowed_origins=settings.ALLOWED_ORIGINS
@@ -95,7 +95,9 @@ async def disconnect(sid: str) -> None:
 
         if username and game_id:
             # Handle disconnection presence
-            await presence_update(sid, {"game_id": game_id, "status": "offline"})
+            await presence_update(
+                sid, {"game_id": game_id, "status": "offline"}
+            )
 
         if username:
             await matchmaker.cancel_matching(username)
@@ -120,11 +122,14 @@ async def join_game(sid: str, game_id: str) -> None:
     if session.get("username"):
         presence_key = f"presence:{game_id}:{session['username']}"
         await redis_client.set(presence_key, "active", ex=300)  # 5 min expiry
-        await presence_manager.set_player_status(game_id, session["username"], "online")
-        await sio.emit("presence_changed", {
-            "username": session["username"],
-            "status": "online"
-        }, room=game_id)
+        await presence_manager.set_player_status(
+            game_id, session["username"], "online"
+        )
+        await sio.emit(
+            "presence_changed",
+            {"username": session["username"], "status": "online"},
+            room=game_id,
+        )
 
 
 @sio.event
@@ -413,18 +418,24 @@ async def presence_update(sid: str, data: dict[str, Any]) -> None:
             countdown_data = {
                 "username": username,
                 "countdown": presence_manager.PLAYER_TIMEOUT,
-                "type": "disconnect"
+                "type": "disconnect",
             }
             await sio.emit("countdown_started", countdown_data, room=game_id)
 
             # Schedule forfeit check
             async def check_forfeit():
                 await asyncio.sleep(presence_manager.PLAYER_TIMEOUT)
-                if await presence_manager.is_countdown_active(game_id, username):
+                if await presence_manager.is_countdown_active(
+                    game_id, username
+                ):
                     # Player didn't reconnect - forfeit
                     game = await get_game_by_id(game_id)
                     if game and not game.finished_at:
-                        game.winner = PlayerEnum.PLAYER_2 if username == game.player_1_username else PlayerEnum.PLAYER_1
+                        game.winner = (
+                            PlayerEnum.PLAYER_2
+                            if username == game.player_1_username
+                            else PlayerEnum.PLAYER_1
+                        )
                         game.finished_at = datetime.now(timezone.utc)
                         await update_game(game.id, game.model_dump())
                         await game_manager.broadcast_game(game)
@@ -434,13 +445,16 @@ async def presence_update(sid: str, data: dict[str, Any]) -> None:
             # Player reconnected - stop countdown
             if await presence_manager.is_countdown_active(game_id, username):
                 await presence_manager.stop_countdown(game_id, username)
-                await sio.emit("countdown_cancelled", {"username": username}, room=game_id)
+                await sio.emit(
+                    "countdown_cancelled", {"username": username}, room=game_id
+                )
 
         # Broadcast status update to all players in game
-        await sio.emit("presence_changed", {
-            "username": username,
-            "status": status
-        }, room=game_id)
+        await sio.emit(
+            "presence_changed",
+            {"username": username, "status": status},
+            room=game_id,
+        )
 
     except Exception as e:
         logger.error(f"Presence update error: {e}")
