@@ -106,7 +106,7 @@ export const RematchButton = memo(function RematchButton({
         return (
             <button
                 onClick={onCancelRematch}
-                className="relative group px-8 py-3 min-w-[180px] bg-gradient-to-r from-red-500 to-rose-600
+                className="px-8 py-3 min-w-[180px] bg-gradient-to-r from-red-500 to-rose-600
                          text-white rounded-xl font-medium shadow-lg
                          transform transition-all duration-300
                          hover:scale-105 hover:shadow-xl
@@ -114,8 +114,6 @@ export const RematchButton = memo(function RematchButton({
                          border border-red-400/50
                          dark:from-red-600 dark:to-rose-700"
             >
-                <span className="absolute inset-0 bg-gradient-to-r from-red-400/0 via-red-400/30 to-red-400/0
-                               opacity-0 group-hover:opacity-100 transition-opacity animate-shine"></span>
                 Cancel Request
             </button>
         );
@@ -125,7 +123,7 @@ export const RematchButton = memo(function RematchButton({
         <button
             onClick={onRematch}
             disabled={rematchStatus === 'waiting'}
-            className="relative group px-8 py-3 min-w-[180px] bg-gradient-to-r from-emerald-500 to-cyan-500
+            className="px-8 py-3 min-w-[180px] bg-gradient-to-r from-emerald-500 to-cyan-500
                      text-white rounded-xl font-medium shadow-lg
                      transform transition-all duration-300
                      hover:scale-105 hover:shadow-xl
@@ -134,8 +132,6 @@ export const RematchButton = memo(function RematchButton({
                      dark:from-emerald-600 dark:to-cyan-600
                      disabled:opacity-50 disabled:cursor-not-allowed"
         >
-            <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0
-                           opacity-0 group-hover:opacity-100 transition-opacity animate-shine"></span>
             Play Again
         </button>
     );
@@ -149,7 +145,7 @@ export const ReplayButton = memo(function ReplayButton({ onReplay }: ReplayButto
     return (
         <button
             onClick={onReplay}
-            className="relative group px-8 py-3 min-w-[180px] bg-gradient-to-r from-violet-500 to-purple-600
+            className="px-8 py-3 min-w-[180px] bg-gradient-to-r from-violet-500 to-purple-600
                      text-white rounded-xl font-medium shadow-lg
                      transform transition-all duration-300
                      hover:scale-105 hover:shadow-xl
@@ -157,8 +153,6 @@ export const ReplayButton = memo(function ReplayButton({ onReplay }: ReplayButto
                      border border-violet-400/50
                      dark:from-violet-600 dark:to-purple-700"
         >
-            <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0
-                           opacity-0 group-hover:opacity-100 transition-opacity animate-shine"></span>
             <div className="flex items-center justify-center gap-2">
                 <svg className="w-5 h-5 animate-spin-slow" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}

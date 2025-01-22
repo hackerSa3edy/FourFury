@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { GameData } from "@/app/games/[id]/page";
 import { Socket } from "socket.io-client";
 
@@ -51,8 +51,8 @@ export const GameBoard = React.memo(({ gameData, socket, playerName }: { gameDat
     return (
         <div
             className={`
-                mt-4 rounded-xl
-                p-6 md:p-8
+                mt-2 sm:mt-4 rounded-xl
+                p-2 sm:p-4 md:p-6 lg:p-8
                 shadow-[0_0_15px_rgba(0,0,0,0.1)]
                 dark:shadow-[0_0_15px_rgba(14,165,233,0.2)]
                 bg-gradient-to-br from-cyan-500/90 to-blue-600/90
@@ -60,21 +60,30 @@ export const GameBoard = React.memo(({ gameData, socket, playerName }: { gameDat
                 backdrop-blur-md
                 border border-cyan-400/30
                 dark:border-cyan-500/30
-                transition-all duration-500
+                transition-all duration-300 ease-in-out
                 hover:shadow-[0_0_25px_rgba(0,0,0,0.15)]
                 dark:hover:shadow-[0_0_25px_rgba(14,165,233,0.3)]
-                max-h-[80vh] overflow-y-auto
+                max-h-[90vh] overflow-y-auto
+                overscroll-behavior-contain
                 relative
-                before:absolute before:inset-0
-                before:bg-gradient-to-br before:from-white/5 before:to-transparent
-                before:rounded-xl
+                touch-pan-y
+                grid place-items-center
+                w-full max-w-4xl mx-auto
             `}
         >
-            <div className="relative z-10">
-                <table className="mx-auto my-0 sm:my-2">
-                    <tbody>
+            <div className="relative z-10 w-full overflow-x-hidden">
+                <table
+                    className="mx-auto my-0 sm:my-2"
+                    role="grid"
+                    aria-label="Connect Four Game Board"
+                >
+                    <tbody className="grid gap-1 sm:gap-2">
                         {gameData.board.map((row: number[], rowIndex: number) => (
-                            <tr key={`row-${rowIndex}`}>
+                            <tr
+                                key={`row-${rowIndex}`}
+                                className="grid grid-cols-7 gap-1 sm:gap-2"
+                                role="row"
+                            >
                                 {row.map((cell: number, colIndex: number) => (
                                     <GameBoardCell
                                         key={`${rowIndex}-${colIndex}`}
@@ -109,6 +118,13 @@ const GameBoardCell = React.memo(({ rowIndex, colIndex, cellValue, handleCellCli
     handleColumnHover: (colIndex: number) => void;
     handleColumnLeave: () => void;
 }) => {
+    const [isPressed, setIsPressed] = useState(false);
+    const [isTouchDevice, setIsTouchDevice] = useState(false);
+
+    useEffect(() => {
+        setIsTouchDevice('ontouchstart' in window);
+    }, []);
+
     const isHighlighted = useMemo(() => {
         return !gameData.finished_at &&
                gameData.next_player_to_move_username === playerName &&
@@ -126,26 +142,24 @@ const GameBoardCell = React.memo(({ rowIndex, colIndex, cellValue, handleCellCli
 
     const cellStyle = useMemo(() => {
         const baseStyle = `
-            aspect-square w-8 sm:w-10 md:w-12 lg:w-14 xl:w-16
+            aspect-square w-[min(8vw,3rem)] sm:w-[min(10vw,3.5rem)] md:w-[min(12vw,4rem)] lg:w-[min(14vw,4.5rem)]
             rounded-full
-            transform transition-all duration-300
+            transform transition-all duration-200
             cursor-${isPlayable ? 'pointer' : 'not-allowed'}
             relative
-            before:absolute before:inset-0
-            before:rounded-full
-            before:transition-opacity
-            before:duration-300
-            after:absolute after:inset-0
-            after:rounded-full
-            after:transition-opacity
-            after:duration-300
-            hover:scale-110
-            hover:z-10
+            select-none
+            touch-manipulation
+            -webkit-tap-highlight-color: transparent
+            ${isPressed ? 'scale-95' : ''}
+            ${isPlayable && !isTouchDevice ? 'hover:scale-110' : ''}
+            outline-none
+            focus:ring-2 focus:ring-white/50
+            focus:ring-offset-2 focus:ring-offset-transparent
         `;
 
         const glowStyle = `
             shadow-lg
-            ${isHighlighted ? 'animate-pulse' : ''}
+            ${isHighlighted ? 'animate-bounce-subtle' : ''}
             hover:shadow-[0_0_15px_rgba(255,255,255,0.5)]
         `;
 
@@ -211,20 +225,48 @@ const GameBoardCell = React.memo(({ rowIndex, colIndex, cellValue, handleCellCli
             hover:shadow-[0_0_15px_rgba(186,230,253,0.4)]
             dark:hover:shadow-[0_0_15px_rgba(129,140,248,0.3)]
         `;
-    }, [cellValue, isHighlighted, isPlayable, isWinningCell]);
+    }, [cellValue, isHighlighted, isPlayable, isWinningCell, isPressed, isTouchDevice]);
+
+    const handlePress = useCallback(() => {
+        if (isPlayable) {
+            setIsPressed(true);
+            setTimeout(() => setIsPressed(false), 200);
+        }
+    }, [isPlayable]);
 
     return (
         <td
-            className="p-1.5 md:p-2"
+            className="p-0.5 sm:p-1 md:p-1.5"
+            onTouchStart={() => {
+                handlePress();
+                if (isPlayable) {
+                    handleColumnHover(colIndex);
+                }
+            }}
+            onTouchEnd={() => {
+                handleColumnLeave();
+                setIsPressed(false);
+            }}
+            onMouseDown={handlePress}
             onMouseEnter={() => isPlayable && handleColumnHover(colIndex)}
-            onMouseLeave={handleColumnLeave}
+            onMouseLeave={() => {
+                handleColumnLeave();
+                setIsPressed(false);
+            }}
+            role="gridcell"
+            aria-label={`Row ${rowIndex + 1}, Column ${colIndex + 1}`}
         >
             <button
                 className={cellStyle}
                 onClick={() => isPlayable && handleCellClick(rowIndex, colIndex)}
-                aria-label={`Cell ${rowIndex}-${colIndex}`}
                 disabled={!isPlayable}
-            />
+                aria-label={`Place token in column ${colIndex + 1}`}
+                aria-disabled={!isPlayable}
+            >
+                <span className="sr-only">
+                    {isPlayable ? 'Empty cell' : cellValue === 1 ? 'Player 1 token' : 'Player 2 token'}
+                </span>
+            </button>
         </td>
     );
 });

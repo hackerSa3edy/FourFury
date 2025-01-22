@@ -10,7 +10,6 @@ import { getFourFuryCookie } from "@/utils/localStorageUtils";
 import { WaitingPlayerToJoin } from "@/components/WaitingPlayerToJoin";
 import { GameInfo } from "@/components/GameInfo";
 import { GameBoard } from "@/components/GameBoard";
-import { GameStatus } from "@/components/GameStatus";
 import { ExitWarningDialog } from "@/components/ExitWarningDialog";
 import { useGamePresence } from '@/hooks/useGamePresence';
 import { useGameRematch } from '@/hooks/useGameRematch';
@@ -208,13 +207,27 @@ export default function PlayGame() {
         }
     };
 
-    // Loading state
+    // Enhanced loading state
     if (isLoading) {
         return (
-            <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-blue-50/90 to-blue-200/90 dark:from-gray-900/90 dark:to-blue-900/90 backdrop-blur-md z-50">
-                <div className="relative p-8 rounded-2xl bg-white/90 dark:bg-slate-800/90 shadow-2xl">
-                    <div className="w-12 h-12 border-4 border-blue-500 dark:border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                    <div className="text-lg font-medium text-slate-600 dark:text-slate-300 animate-pulse">
+            <div className="fixed inset-0 flex items-center justify-center
+                bg-gradient-to-br from-blue-50/90 to-blue-200/90
+                dark:from-gray-900/90 dark:to-blue-900/90
+                backdrop-blur-md z-50">
+                <div className="relative p-6 sm:p-8 rounded-2xl
+                    bg-white/90 dark:bg-slate-800/90
+                    shadow-2xl border border-blue-200
+                    dark:border-blue-800
+                    transform transition-all duration-500
+                    animate-fade-in">
+                    <div className="w-10 sm:w-12 h-10 sm:h-12
+                        border-4 border-blue-500
+                        dark:border-purple-500
+                        border-t-transparent rounded-full
+                        animate-spin mx-auto mb-4" />
+                    <div className="text-base sm:text-lg font-medium
+                        text-slate-600 dark:text-slate-300
+                        animate-pulse text-center">
                         Loading your game...
                     </div>
                 </div>
@@ -269,9 +282,10 @@ export default function PlayGame() {
                 bg-gradient-to-br from-cyan-50/95 via-white/95 to-cyan-100/95
                 dark:from-gray-900/95 dark:via-gray-800/95 dark:to-cyan-900/95
                 overflow-x-hidden
-            ">
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 max-w-7xl">
-                    <div className="flex flex-col space-y-4 sm:space-y-6 lg:space-y-8">
+                overscroll-behavior-contain">
+                <div className="container mx-auto px-3 sm:px-4 lg:px-6
+                    py-3 sm:py-4 lg:py-6 max-w-7xl">
+                    <div className="flex flex-col space-y-3 sm:space-y-4 lg:space-y-6">
                         <GameInfo
                             gameData={data}
                             handleReplayGame={handleReplayGame}
@@ -280,8 +294,9 @@ export default function PlayGame() {
                             rematchStatus={rematchStatus}
                             presenceState={presenceState}
                             countdowns={countdowns}
+                            playerName={playerName}
+                            replayInProgress={replayInProgress}
                         />
-                        <GameStatus gameData={data} playerName={playerName} />
                         <GameBoard gameData={data} socket={socket} playerName={playerName} />
                     </div>
                 </div>

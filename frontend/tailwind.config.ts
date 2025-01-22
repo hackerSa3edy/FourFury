@@ -13,6 +13,7 @@ export default {
         foreground: "var(--foreground)",
       },
       animation: {
+        'slide-up': 'slide-up 0.3s ease-out',
         'gradient-xy': 'gradient-xy 15s ease infinite',
         'gradient-slow': 'gradient 15s ease infinite',
         'blob': 'blob 7s infinite',
@@ -26,8 +27,13 @@ export default {
         'float-2': 'float 12s ease-in-out infinite -2s',
         'float-3': 'float 14s ease-in-out infinite -4s',
         'winning-cell': 'winning 2s ease-in-out infinite',
+        'bounce-subtle': 'bounce-subtle 1s infinite',
       },
       keyframes: {
+        'slide-up': {
+            '0%': { transform: 'translateY(100%)', opacity: '0' },
+            '100%': { transform: 'translateY(0)', opacity: '1' }
+        },
         'winning': {
           '0%, 100%': {
             transform: 'scale(1)',
@@ -89,7 +95,11 @@ export default {
         'shine': {
           '0%': { transform: 'translateX(-100%)' },
           '100%': { transform: 'translateX(100%)' }
-        }
+        },
+        'bounce-subtle': {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-10%)' }
+        },
       },
       backgroundImage: {
         'grid-pattern': 'linear-gradient(to right, rgb(229 231 235 / 0.1) 1px, transparent 1px), linear-gradient(to bottom, rgb(229 231 235 / 0.1) 1px, transparent 1px)',
