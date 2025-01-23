@@ -1,3 +1,4 @@
+// games/[id]/page.tsx
 "use client";
 
 import { BACKEND_API_BASE_URL, SOCKETIO_BASE_URL } from "@/constants";
@@ -276,118 +277,168 @@ export default function PlayGame() {
     if (!data.player_2_username && data.id) return <WaitingPlayerToJoin id={data.id} />;
 
     return (
-        <>
+        <div className="min-h-screen w-full bg-gradient-to-br from-cyan-50/95 via-white/95 to-cyan-100/95
+            dark:from-gray-900/95 dark:via-gray-800/95 dark:to-cyan-900/95
+            transition-all duration-500 ease-in-out hover:brightness-105
+            fixed inset-0 overflow-auto">
+
             <HomeButton onClick={handleExitWarning} />
-            <div className="min-h-screen w-full flex flex-col
-                bg-gradient-to-br from-cyan-50/95 via-white/95 to-cyan-100/95
-                dark:from-gray-900/95 dark:via-gray-800/95 dark:to-cyan-900/95
-                overflow-x-hidden
-                overscroll-behavior-contain">
-                <div className="container mx-auto px-3 sm:px-4 lg:px-6
-                    py-3 sm:py-4 lg:py-6 max-w-7xl">
-                    <div className="flex flex-col space-y-3 sm:space-y-4 lg:space-y-6">
-                        <GameInfo
-                            gameData={data}
-                            handleReplayGame={handleReplayGame}
-                            handleRematch={handleRematch}
-                            handleCancelRematch={handleCancelRematch}
-                            rematchStatus={rematchStatus}
-                            presenceState={presenceState}
-                            countdowns={countdowns}
-                            playerName={playerName}
-                            replayInProgress={replayInProgress}
-                        />
-                        <GameBoard gameData={data} socket={socket} playerName={playerName} />
+
+            {/* Main content with responsive layout */}
+            <div className="w-full min-h-screen pt-16 px-[clamp(1rem,3vw,1.5rem)] pb-[clamp(1rem,3vw,1.5rem)]">
+                <div className="h-full grid grid-cols-1 lg:grid-cols-[1fr_minmax(300px,400px)] gap-[clamp(1rem,3vw,1.5rem)]">
+                    {/* Game Info Container - Stacks on top for mobile, moves to right on desktop */}
+                    <div className="lg:col-start-2 lg:row-start-1 h-full flex items-start">
+                        <div className="w-full h-auto
+                            bg-white/90 dark:bg-slate-800/90 rounded-[clamp(0.5rem,2vw,1rem)]
+                            shadow-[0_clamp(0.25rem,1vw,0.5rem)_clamp(1rem,3vw,2rem)_rgba(0,0,0,0.1)]
+                            dark:shadow-[0_clamp(0.25rem,1vw,0.5rem)_clamp(1rem,3vw,2rem)_rgba(0,0,0,0.2)]
+                            border-2 border-blue-100/50 dark:border-slate-700/50
+                            transition-all duration-300
+                            hover:shadow-[0_clamp(0.5rem,2vw,1rem)_clamp(2rem,4vw,3rem)_rgba(0,0,0,0.15)]
+                            dark:hover:shadow-[0_clamp(0.5rem,2vw,1rem)_clamp(2rem,4vw,3rem)_rgba(0,0,0,0.3)]
+                            p-[clamp(0.5rem,2vw,1rem)]
+                            lg:sticky lg:top-20">
+                            <GameInfo
+                                gameData={data}
+                                handleReplayGame={handleReplayGame}
+                                handleRematch={handleRematch}
+                                handleCancelRematch={handleCancelRematch}
+                                rematchStatus={rematchStatus}
+                                presenceState={presenceState}
+                                countdowns={countdowns}
+                                playerName={playerName}
+                                replayInProgress={replayInProgress}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Game Board Container - Stacks below on mobile, moves to left on desktop */}
+                    <div className="lg:col-start-1 lg:row-start-1 h-full flex items-center justify-center">
+                        <div className="w-full h-full max-h-[min(calc(100vh-8rem),calc(100vw-2rem))] lg:max-h-[min(calc(100vh-8rem),calc(100vw-400px))] aspect-square
+                            min-w-[320px] min-h-[320px]
+                            flex items-center justify-center
+                            bg-white/90 dark:bg-slate-800/90 rounded-[clamp(0.5rem,2vw,1rem)]
+                            shadow-[0_clamp(0.25rem,1vw,0.5rem)_clamp(1rem,3vw,2rem)_rgba(0,0,0,0.1)]
+                            dark:shadow-[0_clamp(0.25rem,1vw,0.5rem)_clamp(1rem,3vw,2rem)_rgba(0,0,0,0.2)]
+                            border-2 border-blue-100/50 dark:border-slate-700/50
+                            transition-all duration-300
+                            hover:shadow-[0_clamp(0.5rem,2vw,1rem)_clamp(2rem,4vw,3rem)_rgba(0,0,0,0.15)]
+                            dark:hover:shadow-[0_clamp(0.5rem,2vw,1rem)_clamp(2rem,4vw,3rem)_rgba(0,0,0,0.3)]
+                            p-[clamp(0.5rem,2vw,1rem)]">
+                            <GameBoard
+                                gameData={data}
+                                socket={socket}
+                                playerName={playerName}
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* Rematch Request Popup */}
-            {rematchRequest && (
-                <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-black/70 to-purple-900/70 backdrop-blur-sm z-50">
-                    <div className="bg-gradient-to-br from-white to-purple-50 dark:from-gray-800 dark:to-purple-900 p-8 rounded-2xl shadow-2xl max-w-md w-full mx-4 transform transition-all duration-500 ease-out scale-100 hover:scale-102 border border-purple-200 dark:border-purple-700">
-                        <div className="mb-6">
-                            <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full flex items-center justify-center">
-                                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                                </svg>
-                            </div>
-                            <h3 className="text-2xl font-bold text-center bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                                Rematch Challenge!
-                            </h3>
+        {/* Rematch Request Popup - enhanced styling */}
+        {rematchRequest && (
+            <div className="fixed inset-0 flex items-center justify-center
+                bg-gradient-to-br from-black/80 to-purple-900/80
+                backdrop-blur-md z-50 transition-opacity duration-500">
+                <div className="bg-gradient-to-br from-white to-purple-50
+                    dark:from-gray-800 dark:to-purple-900
+                    min-h-screen w-full sm:min-h-0 sm:w-auto sm:max-w-lg sm:mx-6 sm:rounded-3xl
+                    p-8 sm:p-10
+                    flex flex-col items-center justify-center
+                    transform transition-all duration-300 hover:scale-[1.02]
+                    border-2 border-purple-200 dark:border-purple-700">
+                    <div className="mb-8 w-full">
+                        <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-purple-400 to-pink-500
+                            rounded-full flex items-center justify-center
+                            shadow-lg transform hover:rotate-12 transition-transform">
+                            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                            </svg>
                         </div>
-                        <p className="text-center mb-8 text-gray-600 dark:text-gray-300">
-                            <span className="font-semibold text-purple-600 dark:text-purple-400">{rematchRequest.requesterName}</span>
-                            <span> wants to prove themselves in another game!</span>
-                        </p>
-                        <div className="flex flex-col sm:flex-row justify-center gap-4">
-                            <button
-                                onClick={handleAcceptRematch}
-                                className="px-8 py-3 bg-gradient-to-r from-green-400 to-emerald-500 text-white rounded-lg font-medium transform transition-all duration-300 hover:scale-105 hover:shadow-lg hover:from-green-500 hover:to-emerald-600 focus:ring-2 focus:ring-green-400 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
-                            >
-                                Accept Challenge
-                            </button>
-                            <button
-                                onClick={handleDeclineRematch}
-                                className="px-8 py-3 bg-gradient-to-r from-red-400 to-rose-500 text-white rounded-lg font-medium transform transition-all duration-300 hover:scale-105 hover:shadow-lg hover:from-red-500 hover:to-rose-600 focus:ring-2 focus:ring-red-400 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
-                            >
-                                Decline
-                            </button>
-                        </div>
+                        <h3 className="text-2xl sm:text-3xl font-bold text-center bg-gradient-to-r from-purple-600 to-pink-600
+                            bg-clip-text text-transparent">
+                            Rematch Challenge!
+                        </h3>
+                    </div>
+                    <p className="text-center mb-8 text-gray-600 dark:text-gray-300 px-4">
+                        <span className="font-semibold text-purple-600 dark:text-purple-400">{rematchRequest.requesterName}</span>
+                        <span> wants to prove themselves in another game!</span>
+                    </p>
+                    <div className="flex flex-col w-full gap-4 px-4 sm:px-0 sm:flex-row sm:justify-center">
+                        <button
+                            onClick={handleAcceptRematch}
+                            className="w-full sm:w-auto px-8 py-3 bg-gradient-to-r from-green-400 to-emerald-500 text-white rounded-lg font-medium transform transition-all duration-300 hover:scale-105 hover:shadow-lg hover:from-green-500 hover:to-emerald-600 focus:ring-2 focus:ring-green-400 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+                        >
+                            Accept Challenge
+                        </button>
+                        <button
+                            onClick={handleDeclineRematch}
+                            className="w-full sm:w-auto px-8 py-3 bg-gradient-to-r from-red-400 to-rose-500 text-white rounded-lg font-medium transform transition-all duration-300 hover:scale-105 hover:shadow-lg hover:from-red-500 hover:to-rose-600 focus:ring-2 focus:ring-red-400 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+                        >
+                            Decline
+                        </button>
                     </div>
                 </div>
-            )}
+            </div>
+        )}
 
-            {rematchStatus === 'declined' && (
-                <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-black/70 to-red-900/70 backdrop-blur-sm z-50">
-                    <div className="bg-gradient-to-br from-white to-red-50 dark:from-gray-800 dark:to-red-900 p-8 rounded-2xl shadow-2xl max-w-md w-full mx-4 transform animate-bounce-gentle">
-                        <div className="flex items-center justify-center mb-4">
-                            <div className="w-12 h-12 bg-gradient-to-br from-red-400 to-rose-500 rounded-full flex items-center justify-center">
-                                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </div>
+        {/* Enhanced Error and Warning Dialogs */}
+        {rematchStatus === 'declined' && (
+            <div className="fixed inset-0 flex items-center justify-center
+                bg-gradient-to-br from-black/80 to-red-900/80 backdrop-blur-md z-50">
+                <div className="bg-gradient-to-br from-white to-red-50
+                    dark:from-gray-800 dark:to-red-900 p-10
+                    rounded-3xl shadow-2xl max-w-lg w-full mx-6
+                    transform transition-all duration-300
+                    border-2 border-red-200 dark:border-red-700">
+                    <div className="flex items-center justify-center mb-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-red-400 to-rose-500 rounded-full flex items-center justify-center">
+                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
                         </div>
-                        <p className="text-xl text-center font-medium bg-gradient-to-r from-red-600 to-rose-600 bg-clip-text text-transparent">
-                            Rematch declined
+                    </div>
+                    <p className="text-xl text-center font-medium bg-gradient-to-r from-red-600 to-rose-600 bg-clip-text text-transparent">
+                        Rematch declined
+                    </p>
+                    <p className="text-center mt-2 text-gray-600 dark:text-gray-300">
+                        Returning to home...
+                    </p>
+                </div>
+            </div>
+        )}
+
+        {/* Rematch Error Popup */}
+        {rematchError && (
+            <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-black/70 to-red-900/70 backdrop-blur-sm z-50">
+                <div className="bg-gradient-to-br from-white to-red-50 dark:from-gray-800 dark:to-red-900 p-8 rounded-2xl shadow-2xl max-w-md w-full mx-4 transform animate-bounce-gentle">
+                    <div className="flex flex-col items-center space-y-4">
+                        <div className="w-16 h-16 bg-gradient-to-br from-red-400 to-rose-500 rounded-full flex items-center justify-center animate-pulse">
+                            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <h3 className="text-2xl font-bold text-center bg-gradient-to-r from-red-600 to-rose-600 bg-clip-text text-transparent">
+                            Oops! Something went wrong
+                        </h3>
+                        <p className="text-center text-gray-600 dark:text-gray-300">
+                            {rematchError}
                         </p>
-                        <p className="text-center mt-2 text-gray-600 dark:text-gray-300">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
                             Returning to home...
                         </p>
                     </div>
                 </div>
-            )}
+            </div>
+        )}
 
-            {/* Rematch Error Popup */}
-            {rematchError && (
-                <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-black/70 to-red-900/70 backdrop-blur-sm z-50">
-                    <div className="bg-gradient-to-br from-white to-red-50 dark:from-gray-800 dark:to-red-900 p-8 rounded-2xl shadow-2xl max-w-md w-full mx-4 transform animate-bounce-gentle">
-                        <div className="flex flex-col items-center space-y-4">
-                            <div className="w-16 h-16 bg-gradient-to-br from-red-400 to-rose-500 rounded-full flex items-center justify-center animate-pulse">
-                                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                </svg>
-                            </div>
-                            <h3 className="text-2xl font-bold text-center bg-gradient-to-r from-red-600 to-rose-600 bg-clip-text text-transparent">
-                                Oops! Something went wrong
-                            </h3>
-                            <p className="text-center text-gray-600 dark:text-gray-300">
-                                {rematchError}
-                            </p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                                Returning to home...
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {showExitWarning && (
-                <ExitWarningDialog
-                    setShowExitWarning={setShowExitWarning}
-                    onExit={() => router.push('/')}
-                />
-            )}
-        </>
+        {showExitWarning && (
+            <ExitWarningDialog
+                setShowExitWarning={setShowExitWarning}
+                onExit={() => router.push('/')}
+            />
+        )}
+    </div>
     );
 }

@@ -68,20 +68,21 @@ export const GameInfo = React.memo(({
         : null;
 
     return (
-        <div className="relative rounded-2xl p-2 sm:p-4 mx-auto max-w-2xl w-full
+        <div className="relative rounded-[clamp(0.5rem,2vw,1rem)] p-[clamp(0.5rem,2vw,1rem)]
+            w-full
             bg-gradient-to-br from-white/90 via-white/95 to-cyan-50/90
             dark:from-slate-800/90 dark:via-slate-800/95 dark:to-cyan-900/90
-            shadow-[0_2px_16px_rgba(0,0,0,0.06)]
-            dark:shadow-[0_2px_16px_rgba(0,0,0,0.15)]
-            border border-cyan-200/50 dark:border-cyan-800/50
+            shadow-[0_clamp(0.125rem,1vw,0.5rem)_clamp(0.5rem,2vw,1rem)_rgba(0,0,0,0.06)]
+            dark:shadow-[0_clamp(0.125rem,1vw,0.5rem)_clamp(0.5rem,2vw,1rem)_rgba(0,0,0,0.15)]
+            border border-cyan-500 dark:border-cyan-800/50
             backdrop-filter backdrop-blur-[8px]
             transform-gpu transition-all duration-300
-            hover:shadow-[0_4px_24px_rgba(0,0,0,0.08)]
-            dark:hover:shadow-[0_4px_24px_rgba(0,0,0,0.25)]">
+            hover:shadow-[0_clamp(0.25rem,1.5vw,1rem)_clamp(1rem,3vw,1.5rem)_rgba(0,0,0,0.08)]
+            dark:hover:shadow-[0_clamp(0.25rem,1.5vw,1rem)_clamp(1rem,3vw,1.5rem)_rgba(0,0,0,0.25)]">
             <ParticleBackground />
 
-            <div className="text-center space-y-3 sm:space-y-4 relative z-10">
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold
+            <div className="text-center space-y-[clamp(0.75rem,2vw,1rem)] relative z-10">
+                <h1 className="text-[clamp(1.5rem,4vw,2.25rem)] font-extrabold
                     bg-gradient-to-r from-cyan-600 via-purple-600 to-cyan-600
                     dark:from-cyan-400 dark:via-purple-400 dark:to-cyan-400
                     bg-clip-text text-transparent
@@ -90,13 +91,14 @@ export const GameInfo = React.memo(({
                     Connect4 BATTLE
                 </h1>
 
-                <div className="flex flex-col sm:flex-row justify-center items-center
-                    gap-4 sm:gap-8 py-4 sm:py-6">
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(clamp(120px,30vw,180px),1fr))]
+                    items-center justify-items-center gap-[clamp(0.75rem,2vw,1rem)]
+                    py-[clamp(0.75rem,2vw,1.5rem)]">
                     <PlayerStatus
                         name={gameData.player_1}
                         presence={gameData.mode === 'ai' ? { status: 'online' } : presenceState[gameData.player_1_username]}
                         countdown={gameData.mode === 'ai' ? undefined : countdowns[gameData.player_1_username]}
-                        color="from-red-500 via-rose-500 to-red-500"
+                        color="from-red-500 via-rose-500 to-red-500 dark:from-purple-300 dark:to-purple-500"
                     />
                     <div className="flex flex-col items-center transform-gpu
                         hover:scale-110 transition-transform duration-300">
@@ -124,53 +126,78 @@ export const GameInfo = React.memo(({
                     }
                 </div>
 
-                <div className="inline-flex items-center gap-2 px-3 py-1.5
-                    bg-gradient-to-r from-slate-100/50 to-cyan-50/50
-                    dark:from-slate-800/50 dark:to-cyan-900/50
-                    rounded-lg text-sm font-medium
-                    text-slate-700 dark:text-slate-300
-                    border border-slate-200/50 dark:border-slate-700/50
-                    shadow-sm">
-                    {replayInProgress ? (
-                        <span className="text-cyan-600 dark:text-cyan-400">
-                            Move #{gameData.move_number}
-                        </span>
-                    ) : !gameData.finished_at ? (
-                        <span className="text-cyan-600 dark:text-cyan-400">
-                            Move #{gameData.move_number}
-                        </span>
-                    ) : (
-                        renderGameStatus(gameData, playerName)
-                    )}
-                    {humanFinishedAt && (
-                        <>
-                            <span className="text-slate-400 dark:text-slate-500">•</span>
-                            <span className="text-purple-600 dark:text-purple-400">
-                                {humanFinishedAt}
+                <div className="flex flex-col gap-[clamp(0.5rem,1.5vw,0.75rem)]">
+                    <div className="inline-flex items-center justify-center gap-[clamp(0.375rem,1vw,0.5rem)]
+                        px-[clamp(0.75rem,2vw,1rem)] py-[clamp(0.375rem,1vw,0.5rem)]
+                        bg-gradient-to-r from-slate-100/50 to-cyan-50/50
+                        dark:from-slate-800/50 dark:to-cyan-900/50
+                        rounded-[clamp(0.375rem,1vw,0.5rem)] text-[clamp(0.875rem,2.5vw,1rem)] font-medium
+                        text-slate-700 dark:text-slate-300
+                        border border-slate-200/50 dark:border-slate-700/50
+                        shadow-sm">
+                        {replayInProgress ? (
+                            <span className="text-cyan-600 dark:text-cyan-400">
+                                Move #{gameData.move_number}
                             </span>
-                        </>
+                        ) : !gameData.finished_at ? (
+                            <div className="flex items-center gap-2">
+                                <span className="text-cyan-600 dark:text-cyan-400">
+                                    Move #{gameData.move_number}
+                                </span>
+                                <span className="text-slate-400 dark:text-slate-500">•</span>
+                                <div className="flex items-center gap-1.5">
+                                    <div className={`w-2 h-2 rounded-full animate-pulse ${
+                                        gameData.next_player_to_move_username === gameData.player_1_username
+                                            ? 'bg-rose-500 dark:bg-violet-500'
+                                            : 'bg-amber-500 dark:bg-cyan-500'
+                                    }`} />
+                                    <span className={`font-medium ${
+                                        gameData.next_player_to_move_username === gameData.player_1_username
+                                            ? 'text-rose-500 dark:text-violet-400'
+                                            : 'text-amber-500 dark:text-cyan-400'
+                                    }`}>
+                                        {gameData.next_player_to_move_username === playerName
+                                            ? "Your turn"
+                                            : gameData.next_player_to_move_username === gameData.player_1_username
+                                                ? `${gameData.player_1}'s turn`
+                                                : `${gameData.player_2}'s turn`}
+                                    </span>
+                                </div>
+                            </div>
+                        ) : (
+                            renderGameStatus(gameData, playerName)
+                        )}
+                        {humanFinishedAt && (
+                            <>
+                                <span className="text-slate-400 dark:text-slate-500">•</span>
+                                <span className="text-purple-600 dark:text-purple-400">
+                                    {humanFinishedAt}
+                                </span>
+                            </>
+                        )}
+                    </div>
+
+                    {humanFinishedAt && (
+                        <div className="flex flex-wrap items-center justify-center
+                            gap-[clamp(0.5rem,1.5vw,0.75rem)]">
+                            <RematchButton
+                                rematchStatus={rematchStatus}
+                                onRematch={handleRematch}
+                                onCancelRematch={handleCancelRematch}
+                            />
+                            <ReplayButton onReplay={handleReplayGame} />
+                        </div>
                     )}
-               </div>
 
-                {humanFinishedAt && (
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 mt-4">
-                        <RematchButton
-                            rematchStatus={rematchStatus}
-                            onRematch={handleRematch}
-                            onCancelRematch={handleCancelRematch}
-                        />
-                        <ReplayButton onReplay={handleReplayGame} />
-                    </div>
-                )}
-
-                {rematchStatus === 'waiting' && (
-                    <div className="mt-4 text-lg font-bold
-                        bg-gradient-to-r from-cyan-500 to-purple-500
-                        bg-clip-text text-transparent
-                        animate-pulse">
-                        Waiting for opponent to accept rematch...
-                    </div>
-                )}
+                    {rematchStatus === 'waiting' && (
+                        <div className="text-[clamp(1rem,3vw,1.25rem)] font-bold
+                            bg-gradient-to-r from-cyan-500 to-purple-500
+                            bg-clip-text text-transparent
+                            animate-pulse">
+                            Waiting for opponent to accept rematch...
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );
@@ -189,11 +216,14 @@ function PlayerStatus({ name, presence, countdown, color }: {
             <div className={`
                 transform-gpu transition-all duration-300 ease-out
                 ${isOnline ? 'rotate-y-0' : 'rotate-y-180'}
-                flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-3 rounded-xl
+                flex items-center gap-[clamp(0.25rem,1vw,0.5rem)]
+                px-[clamp(0.5rem,2vw,1.5rem)] py-[clamp(0.25rem,1.5vw,0.75rem)]
+                rounded-[clamp(0.375rem,1.5vw,0.75rem)]
                 bg-gradient-to-br ${color}
-                shadow-md hover:shadow-lg
+                shadow-[0_clamp(0.125rem,0.5vw,0.25rem)_clamp(0.5rem,1.5vw,1rem)_rgba(0,0,0,0.1)]
+                hover:shadow-[0_clamp(0.25rem,1vw,0.5rem)_clamp(0.75rem,2vw,1.5rem)_rgba(0,0,0,0.15)]
                 hover:-translate-y-0.5
-                backdrop-filter backdrop-blur-sm
+                backdrop-filter backdrop-blur-[clamp(2px,0.5vw,4px)]
             `}>
                 <div className={`
                     w-3 sm:w-4 h-3 sm:h-4 relative rounded-full

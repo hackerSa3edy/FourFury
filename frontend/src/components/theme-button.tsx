@@ -21,6 +21,8 @@ export default function ThemeButton() {
     <button
       onClick={toggleTheme}
       className={`
+        fixed top-4 right-4
+        z-[1000]
         rounded-full
         p-2.5 sm:p-3
         focus:outline-none focus:ring-2
