@@ -177,7 +177,7 @@ async def disconnect(sid: str) -> None:
 
 
 @sio.event
-async def join_game_room(sid: str, game_id: str, playerStatus: str) -> None:
+async def join_game_room(sid: str, game_id: str, player_status: str) -> None:
     await sio.enter_room(sid, game_id)
     await game_manager.add_player(sid, game_id)
 
@@ -187,9 +187,9 @@ async def join_game_room(sid: str, game_id: str, playerStatus: str) -> None:
         username = session["username"]
         # Set initial presence status
         await presence_manager.set_player_status(
-            game_id, username, playerStatus
+            game_id, username, player_status
         )
-        if playerStatus == "offline":
+        if player_status == "offline":
             # Start timeout for disconnected player
             await presence_manager.start_countdown(game_id, username)
             # Notify other players about disconnection and countdown
