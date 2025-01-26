@@ -45,8 +45,70 @@ class GameManager:
         game_data = game.model_dump_json()
         await sio.emit("game_update", game_data, room=str(game.id))
 
+    async def handle_forfeit(self, game_id: str, username: str) -> None:
+        """Handle player forfeit when timeout expires"""
+        game = await get_game_by_id(game_id)
+        if game and not game.finished_at:
+            game.winner = (
+                PlayerEnum.PLAYER_2
+                if username == game.player_1_username
+                else PlayerEnum.PLAYER_1
+            )
+            game.finished_at = datetime.now(timezone.utc)
+            await update_game(game.id, game.model_dump())
+            await self.broadcast_game(game)
+
+            # Force player status to offline after forfeit
+            await presence_manager.set_player_status(str(game.id), username, "offline")
+
+            # Notify players about forfeit and presence change
+            await sio.emit(
+                "forfeit_game",
+                {
+                    "username": username,
+                    "message": f"{game.player_1 if game.winner != PlayerEnum.PLAYER_1 else game.player_2} has forfeited the game!"
+                },
+                room=str(game.id)
+            )
+
+            # Emit presence change after forfeit
+            await sio.emit(
+                "countdown_update",
+                {
+                    "username": username,
+                    "countdown": None,
+                    "status": "offline"
+                },
+                room=str(game.id)
+            )
+
+            print(f"Player {username} forfeited game {game_id}")
+
 
 game_manager = GameManager()
+
+
+async def listen_for_timeouts():
+    """Listen for Redis key expiration events related to player timeouts"""
+    pubsub = redis_client.pubsub()
+    await pubsub.psubscribe("__keyevent@0__:expired")
+
+    while True:
+        message = await pubsub.get_message(ignore_subscribe_messages=True)
+        if message:
+            key = message["data"]
+            print(f"Timeout expired for key: {key}")
+            if key.startswith(presence_manager.COUNTDOWN_PREFIX):
+                _, game_id, username = key.rsplit(":", 2)
+                logger.info(
+                    f"Timeout expired for player {username} in game {game_id}"
+                )
+                print(f"Timeout expired for player {username} in game {game_id}")
+                await game_manager.handle_forfeit(game_id, username)
+
+
+# Start timeout listener when app initializes
+asyncio.create_task(listen_for_timeouts())
 
 
 @sio.event
@@ -104,8 +166,7 @@ async def disconnect(sid: str) -> None:
 
         # Handle game disconnection if player was in a game
         if game_id and username:
-            presence_key = f"presence:{game_id.split(',')[0]}:{username}"
-            await redis_client.delete(presence_key)
+            presence_manager.set_player_status(game_id.split(',')[0], username, "offline")
 
     except Exception as e:
         logger.error(f"Disconnect cleanup error: {e}")
@@ -114,22 +175,44 @@ async def disconnect(sid: str) -> None:
 
 
 @sio.event
-async def join_game(sid: str, game_id: str) -> None:
+async def join_game_room(sid: str, game_id: str, playerStatus: str) -> None:
     await sio.enter_room(sid, game_id)
     await game_manager.add_player(sid, game_id)
-    # Track player presence
+
+    # Track player presence immediately when joining
     session = await sio.get_session(sid)
     if session.get("username"):
-        presence_key = f"presence:{game_id}:{session['username']}"
-        await redis_client.set(presence_key, "active", ex=300)  # 5 min expiry
-        await presence_manager.set_player_status(
-            game_id, session["username"], "online"
-        )
-        await sio.emit(
-            "presence_changed",
-            {"username": session["username"], "status": "online"},
-            room=game_id,
-        )
+        username = session["username"]
+        # Set initial presence status
+        await presence_manager.set_player_status(game_id, username, playerStatus)
+        if playerStatus == "offline":
+            # Start timeout for disconnected player
+            await presence_manager.start_countdown(game_id, username)
+            # Notify other players about disconnection and countdown
+            await sio.emit(
+                "countdown_update",
+                {
+                    "username": username,
+                    "countdown": presence_manager.PLAYER_TIMEOUT,
+                    "status": "offline"
+                },
+                room=game_id
+            )
+        else:
+            # Player reconnected - stop timeout
+            await presence_manager.stop_countdown(game_id, username)
+            await sio.emit(
+                "countdown_update",
+                {
+                    "username": username,
+                    "countdown": None,
+                    "status": "online"
+                },
+                room=game_id
+            )
+
+        # Store game_id in session for cleanup
+        await sio.save_session(sid, {**session, "game_id": game_id})
 
 
 @sio.event
@@ -139,8 +222,20 @@ async def leave_game(sid: str, game_id: str) -> None:
     # Clear player presence
     session = await sio.get_session(sid)
     if session.get("username"):
-        presence_key = f"presence:{game_id}:{session['username']}"
-        await redis_client.delete(presence_key)
+        await presence_manager.del_player_status(
+            game_id, session["username"]
+        )
+
+    await sio.emit(
+        "countdown_update",
+        {
+            "username": session["username"],
+            "countdown": None,
+            "status": "offline"
+        },
+        room=game_id,
+    )
+
 
 
 @sio.event
@@ -222,7 +317,7 @@ async def start_matching(
         game_data = game.model_dump_json()
 
         # Join the socket room for this game
-        await join_game(sid, str(game.id))
+        await join_game_room(sid, str(game.id), 'online')
 
         if game.player_2_username:
             # Match found - notify both players
@@ -315,8 +410,8 @@ async def request_rematch(sid: str, game_id: str) -> None:
             if username == game.player_1_username
             else game.player_1_username
         )
-        presence_key = f"presence:{game_id}:{opponent_username}"
-        is_opponent_present = await redis_client.exists(presence_key)
+
+        is_opponent_present = await presence_manager.get_player_status(game_id, opponent_username) == "online"
 
         if not is_opponent_present:
             await sio.emit(
@@ -408,53 +503,67 @@ async def presence_update(sid: str, data: dict[str, Any]) -> None:
         if not all([username, game_id]):
             return
 
+        # Get current game for opponent info
+        game = await get_game_by_id(game_id)
+        if not game:
+            return
+
+        # Update current player's status
+        previous_status = await presence_manager.get_player_status(game_id, username)
         await presence_manager.set_player_status(game_id, username, status)
 
-        if status == "offline":
-            # Start countdown for disconnected player
+        # Get current player's countdown
+        current_countdown = None
+        if status == "offline" and previous_status != "offline":
             await presence_manager.start_countdown(game_id, username)
-
-            # Notify other players about disconnection and countdown
-            countdown_data = {
-                "username": username,
-                "countdown": presence_manager.PLAYER_TIMEOUT,
-                "type": "disconnect",
-            }
-            await sio.emit("countdown_started", countdown_data, room=game_id)
-
-            # Schedule forfeit check
-            async def check_forfeit():
-                await asyncio.sleep(presence_manager.PLAYER_TIMEOUT)
-                if await presence_manager.is_countdown_active(
-                    game_id, username
-                ):
-                    # Player didn't reconnect - forfeit
-                    game = await get_game_by_id(game_id)
-                    if game and not game.finished_at:
-                        game.winner = (
-                            PlayerEnum.PLAYER_2
-                            if username == game.player_1_username
-                            else PlayerEnum.PLAYER_1
-                        )
-                        game.finished_at = datetime.now(timezone.utc)
-                        await update_game(game.id, game.model_dump())
-                        await game_manager.broadcast_game(game)
-
-            asyncio.create_task(check_forfeit())
+            current_countdown = presence_manager.PLAYER_TIMEOUT
+        elif status == "online" and previous_status == "offline":
+            await presence_manager.stop_countdown(game_id, username)
+            current_countdown = None
         else:
-            # Player reconnected - stop countdown
-            if await presence_manager.is_countdown_active(game_id, username):
-                await presence_manager.stop_countdown(game_id, username)
-                await sio.emit(
-                    "countdown_cancelled", {"username": username}, room=game_id
-                )
+            current_countdown = await presence_manager.get_countdown_ttl(game_id, username)
 
-        # Broadcast status update to all players in game
+        # Get opponent's status and countdown
+        opponent_username, opponent_status, opponent_countdown = await presence_manager.get_opponent_status(game_id, username, game)
+
+        # Emit current player status
         await sio.emit(
-            "presence_changed",
-            {"username": username, "status": status},
-            room=game_id,
+            "countdown_update",
+            {
+                "username": username,
+                "countdown": current_countdown,
+                "status": status
+            },
+            room=game_id
         )
+
+        # Emit opponent status if available
+        if opponent_status is not None:
+            await sio.emit(
+                "countdown_update",
+                {
+                    "username": opponent_username,
+                    "countdown": opponent_countdown,
+                    "status": opponent_status
+                },
+                room=game_id
+            )
 
     except Exception as e:
         logger.error(f"Presence update error: {e}")
+
+
+@sio.event
+async def forfeit(sid: str, game_id: str) -> None:
+    """Handle immediate forfeit from player"""
+    try:
+        session = await sio.get_session(sid)
+        username = session.get("username")
+
+        if not username or not game_id:
+            return
+
+        await game_manager.handle_forfeit(game_id, username)
+
+    except Exception as e:
+        logger.error(f"Forfeit error: {e}")
