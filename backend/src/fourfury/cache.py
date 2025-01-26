@@ -262,7 +262,7 @@ class PresenceManager:
 
     async def get_opponent_status(
         self, game_id: str, username: str, game: Any = None
-    ) -> tuple[str | None, int | None]:
+    ) -> tuple[Any, str | None, int | None]:
         """
         Get opponent's status and countdown.
         Returns (status, countdown_ttl)
@@ -281,10 +281,10 @@ class PresenceManager:
                     game_id, opponent_username
                 )
                 return opponent_username, status, countdown
-            return None, None
+            return None, None, None
         except Exception as e:
             self._logger.error(f"Error getting opponent status: {e}")
-            return None, None
+            return None, None, None
 
     @classmethod
     def configure_timeout(cls, timeout: int) -> None:

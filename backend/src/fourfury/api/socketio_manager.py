@@ -166,7 +166,7 @@ async def disconnect(sid: str) -> None:
 
         # Handle game disconnection if player was in a game
         if game_id and username:
-            presence_manager.set_player_status(
+            await presence_manager.set_player_status(
                 game_id.split(",")[0], username, "offline"
             )
 
@@ -510,6 +510,7 @@ async def presence_update(sid: str, data: dict[str, Any]) -> None:
         if not game:
             return
 
+        game_id = str(game_id)
         # Update current player's status
         previous_status = await presence_manager.get_player_status(
             game_id, username
