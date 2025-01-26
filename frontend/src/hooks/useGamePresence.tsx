@@ -4,7 +4,7 @@ import { GameData } from '@/app/games/[id]/page';
 
 interface PlayerPresence {
     status: 'online' | 'offline';
-    countdown?: number;
+    countdown?: number | null | undefined;
 }
 
 interface PresenceState {
@@ -13,7 +13,7 @@ interface PresenceState {
 
 export function useGamePresence(socket: Socket | null, data: GameData | null) {
     const [presenceState, setPresenceState] = useState<PresenceState>({});
-    const [countdowns, setCountdowns] = useState<{[key: string]: number}>({});
+    const [forfeitMessage, setForfeitMessage] = useState<string>('');
 
     useEffect(() => {
         if (!socket || !data || data.mode === 'ai') return;
@@ -27,77 +27,60 @@ export function useGamePresence(socket: Socket | null, data: GameData | null) {
             }
         };
 
-        const handlePresenceChange = (data: { username: string; status: 'online' | 'offline' }) => {
+        const handleCountdownUpdate = (data: { username: string; countdown: number | null; status: 'online' | 'offline' }) => {
             setPresenceState(prev => ({
                 ...prev,
-                [data.username]: { status: data.status }
+                [data.username]: {
+                    status: data.status,
+                    countdown: data.countdown ?? undefined
+                }
             }));
 
             // Emit an event that other hooks can listen to
             const event = new CustomEvent('playerPresenceChanged', {
-                detail: { username: data.username, status: data.status }
+                detail: { username: data.username, status: data.status, countdown: data.countdown ?? undefined }
             });
             window.dispatchEvent(event);
         };
 
-        const handleCountdownStart = (data: { username: string; countdown: number }) => {
-            setPresenceState(prev => ({
-                ...prev,
-                [data.username]: { status: 'offline', countdown: data.countdown }
-            }));
-
-            setCountdowns(prev => ({
-                ...prev,
-                [data.username]: data.countdown
-            }));
-        };
-
-        const handleCountdownCancel = (data: { username: string }) => {
-            setPresenceState(prev => ({
-                ...prev,
-                [data.username]: { status: 'online' }
-            }));
-
-            setCountdowns(prev => {
-                const newCountdowns = { ...prev };
-                delete newCountdowns[data.username];
-                return newCountdowns;
-            });
+        const handleForfeit = (data: { username: string; message: string }) => {
+            setForfeitMessage(data.message);
         };
 
         document.addEventListener('visibilitychange', handleVisibilityChange);
 
-        socket.on('presence_changed', handlePresenceChange);
-        socket.on('countdown_started', handleCountdownStart);
-        socket.on('countdown_cancelled', handleCountdownCancel);
+        socket.on('countdown_update', handleCountdownUpdate);
+        socket.on('forfeit_game', handleForfeit);
 
         if (data?.id) {
             socket.emit('presence_update', {
                 game_id: data.id,
-                status: 'online'
+                status: (!document.hidden) ? 'online' : 'offline'
             });
         }
 
         const countdownInterval = setInterval(() => {
-            setCountdowns(prev => {
-                const newCountdowns = { ...prev };
-                Object.keys(newCountdowns).forEach(username => {
-                    if (newCountdowns[username] > 0) {
-                        newCountdowns[username]--;
+            setPresenceState(prev => {
+                const newState = { ...prev };
+                Object.keys(newState).forEach(username => {
+                    if (newState[username].countdown && newState[username].countdown! > 0) {
+                        newState[username] = {
+                            ...newState[username],
+                            countdown: newState[username].countdown! - 1
+                        };
                     }
                 });
-                return newCountdowns;
+                return newState;
             });
         }, 1000);
 
         return () => {
             document.removeEventListener('visibilitychange', handleVisibilityChange);
-            socket.off('presence_changed', handlePresenceChange);
-            socket.off('countdown_started', handleCountdownStart);
-            socket.off('countdown_cancelled', handleCountdownCancel);
+            socket.off('countdown_update', handleCountdownUpdate);
+            socket.off('forfeit_game', handleForfeit);
             clearInterval(countdownInterval);
         };
     }, [socket, data]);
 
-    return { presenceState, countdowns };
+    return { presenceState, forfeitMessage };
 }

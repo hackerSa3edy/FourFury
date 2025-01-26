@@ -54,7 +54,7 @@ export default function PlayGame() {
     const [replayInProgress, setReplayInProgress] = useState(false);
     const [showExitWarning, setShowExitWarning] = useState(false);
     const router = useRouter();
-    const { presenceState, countdowns } = useGamePresence(socket, data);
+    const { presenceState, forfeitMessage } = useGamePresence(socket, data);
 
     const playerName = useMemo(() => {
         return getFourFuryCookie(Array.isArray(id) ? id[0] : id || '')?.split(',')[1];
@@ -137,7 +137,7 @@ export default function PlayGame() {
             setSocketStatus({ isConnected: true, error: null });
             // Only join if we have valid game data
             if (data?.id) {
-                socket.emit('join_game', data.id);
+                socket.emit('join_game_room', data.id, document.hidden ? 'offline' : 'online');
             }
         };
 
@@ -204,15 +204,25 @@ export default function PlayGame() {
         if (!data?.finished_at) {
             setShowExitWarning(true);
         } else {
+            socket?.emit('leave_game', data?.id);
             router.push('/');
         }
     };
+
+    const handleExit = useCallback(() => {
+        if (socket && data?.id && !data.finished_at) {
+            socket.emit('forfeit', data.id);
+        }
+        socket?.emit('leave_game', data?.id);
+
+        router.push('/');
+    }, [socket, data, router]);
 
     // Enhanced loading state
     if (isLoading) {
         return (
             <div className="fixed inset-0 flex items-center justify-center
-                bg-gradient-to-br from-blue-50/90 to-blue-200/90
+                bg-gradient-to-br from-blue-50/90 via-purple-50/90 to-indigo-100/90
                 dark:from-gray-900/90 dark:to-blue-900/90
                 backdrop-blur-md z-50">
                 <div className="relative p-6 sm:p-8 rounded-2xl
@@ -238,7 +248,7 @@ export default function PlayGame() {
     // Error state
     if (socketStatus.error) {
         return (
-            <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 backdrop-blur-md z-50">
+            <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-rose-50 via-slate-50 to-rose-100 dark:from-slate-900 dark:to-slate-800 backdrop-blur-md z-50">
                 <div className="p-8 rounded-xl bg-white/90 dark:bg-slate-800/90 shadow-2xl border border-red-200 dark:border-red-800">
                     <div className="flex items-center space-x-4">
                         <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
@@ -257,7 +267,7 @@ export default function PlayGame() {
     }
 
     if (!data || !playerName || (playerName !== data?.player_1_username && !data?.player_2_username)) return (
-        <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 backdrop-blur-md z-50">
+        <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-rose-50 via-slate-50 to-rose-100 dark:from-slate-900 dark:to-slate-800 backdrop-blur-md z-50">
             <div className="p-8 rounded-xl bg-white/90 dark:bg-slate-800/90 shadow-2xl border border-red-200 dark:border-red-800">
                 <div className="flex flex-col items-center space-y-4">
                     <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
@@ -277,26 +287,48 @@ export default function PlayGame() {
     if (!data.player_2_username && data.id) return <WaitingPlayerToJoin id={data.id} />;
 
     return (
-        <div className="min-h-screen w-full bg-gradient-to-br from-cyan-50/95 via-white/95 to-cyan-100/95
-            dark:from-gray-900/95 dark:via-gray-800/95 dark:to-cyan-900/95
-            transition-all duration-500 ease-in-out hover:brightness-105
+        <div className="min-h-screen w-full bg-gradient-to-br from-emerald-50 via-blue-50 to-indigo-50
+            dark:from-gray-900 dark:via-blue-900/30 dark:to-emerald-900/30
+            animate-gradient-slow
+            transition-all duration-500 ease-in-out
             fixed inset-0 overflow-auto">
+            {/* Animated Background Elements - More visible version for day mode */}
+            <div className="absolute inset-0 opacity-60 dark:opacity-30 overflow-hidden">
+                <div className="absolute top-0 -left-4 w-96 h-96 bg-emerald-400/70 dark:bg-emerald-600 rounded-full mix-blend-multiply filter blur-xl animate-blob"></div>
+                <div className="absolute top-0 -right-4 w-96 h-96 bg-blue-400/70 dark:bg-blue-600 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-2000"></div>
+                <div className="absolute -bottom-8 left-20 w-96 h-96 bg-indigo-400/70 dark:bg-indigo-600 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-4000"></div>
+            </div>
+
+            {/* Grid Pattern Overlay */}
+            <div
+                className="absolute inset-0 bg-grid-pattern opacity-10 dark:opacity-5"
+                style={{
+                    WebkitBackfaceVisibility: 'hidden',
+                    backfaceVisibility: 'hidden',
+                    WebkitPerspective: '1000',
+                    perspective: '1000',
+                    WebkitTransform: 'translate3d(0,0,0)',
+                    transform: 'translate3d(0,0,0)'
+                }}
+            ></div>
 
             <HomeButton onClick={handleExitWarning} />
 
             {/* Main content with responsive layout */}
-            <div className="w-full min-h-screen pt-16 px-[clamp(1rem,3vw,1.5rem)] pb-[clamp(1rem,3vw,1.5rem)]">
+            <div className="relative w-full min-h-screen pt-16 px-[clamp(1rem,3vw,1.5rem)] pb-[clamp(1rem,3vw,1.5rem)]">
                 <div className="h-full grid grid-cols-1 lg:grid-cols-[1fr_minmax(300px,400px)] gap-[clamp(1rem,3vw,1.5rem)]">
                     {/* Game Info Container - Stacks on top for mobile, moves to right on desktop */}
                     <div className="lg:col-start-2 lg:row-start-1 h-full flex items-start">
                         <div className="w-full h-auto
-                            bg-white/90 dark:bg-slate-800/90 rounded-[clamp(0.5rem,2vw,1rem)]
-                            shadow-[0_clamp(0.25rem,1vw,0.5rem)_clamp(1rem,3vw,2rem)_rgba(0,0,0,0.1)]
-                            dark:shadow-[0_clamp(0.25rem,1vw,0.5rem)_clamp(1rem,3vw,2rem)_rgba(0,0,0,0.2)]
-                            border-2 border-blue-100/50 dark:border-slate-700/50
+                            bg-gradient-to-br from-white/95 via-white/90 to-indigo-50/80
+                            dark:from-slate-800/90 dark:via-slate-800/85 dark:to-blue-900/80
+                            rounded-[clamp(0.5rem,2vw,1rem)]
+                            shadow-[0_clamp(0.25rem,1vw,0.5rem)_clamp(1rem,3vw,2rem)_rgba(99,102,241,0.15)]
+                            dark:shadow-[0_clamp(0.25rem,1vw,0.5rem)_clamp(1rem,3vw,2rem)_rgba(30,58,138,0.3)]
+                            border border-indigo-100/50 dark:border-blue-900/50
                             transition-all duration-300
-                            hover:shadow-[0_clamp(0.5rem,2vw,1rem)_clamp(2rem,4vw,3rem)_rgba(0,0,0,0.15)]
-                            dark:hover:shadow-[0_clamp(0.5rem,2vw,1rem)_clamp(2rem,4vw,3rem)_rgba(0,0,0,0.3)]
+                            hover:shadow-[0_clamp(0.5rem,2vw,1rem)_clamp(2rem,4vw,3rem)_rgba(99,102,241,0.25)]
+                            dark:hover:shadow-[0_clamp(0.5rem,2vw,1rem)_clamp(2rem,4vw,3rem)_rgba(30,58,138,0.4)]
                             p-[clamp(0.5rem,2vw,1rem)]
                             lg:sticky lg:top-20">
                             <GameInfo
@@ -306,9 +338,9 @@ export default function PlayGame() {
                                 handleCancelRematch={handleCancelRematch}
                                 rematchStatus={rematchStatus}
                                 presenceState={presenceState}
-                                countdowns={countdowns}
                                 playerName={playerName}
                                 replayInProgress={replayInProgress}
+                                forfeitMessage={forfeitMessage}
                             />
                         </div>
                     </div>
@@ -318,13 +350,15 @@ export default function PlayGame() {
                         <div className="w-full h-full max-h-[min(calc(100vh-8rem),calc(100vw-2rem))] lg:max-h-[min(calc(100vh-8rem),calc(100vw-400px))] aspect-square
                             min-w-[320px] min-h-[320px]
                             flex items-center justify-center
-                            bg-white/90 dark:bg-slate-800/90 rounded-[clamp(0.5rem,2vw,1rem)]
-                            shadow-[0_clamp(0.25rem,1vw,0.5rem)_clamp(1rem,3vw,2rem)_rgba(0,0,0,0.1)]
-                            dark:shadow-[0_clamp(0.25rem,1vw,0.5rem)_clamp(1rem,3vw,2rem)_rgba(0,0,0,0.2)]
-                            border-2 border-blue-100/50 dark:border-slate-700/50
+                            bg-gradient-to-br from-white/95 via-white/90 to-indigo-50/80
+                            dark:from-slate-800/90 dark:via-slate-800/85 dark:to-blue-900/80
+                            rounded-[clamp(0.5rem,2vw,1rem)]
+                            shadow-[0_clamp(0.25rem,1vw,0.5rem)_clamp(1rem,3vw,2rem)_rgba(99,102,241,0.15)]
+                            dark:shadow-[0_clamp(0.25rem,1vw,0.5rem)_clamp(1rem,3vw,2rem)_rgba(30,58,138,0.3)]
+                            border border-indigo-100/50 dark:border-blue-900/50
                             transition-all duration-300
-                            hover:shadow-[0_clamp(0.5rem,2vw,1rem)_clamp(2rem,4vw,3rem)_rgba(0,0,0,0.15)]
-                            dark:hover:shadow-[0_clamp(0.5rem,2vw,1rem)_clamp(2rem,4vw,3rem)_rgba(0,0,0,0.3)]
+                            hover:shadow-[0_clamp(0.5rem,2vw,1rem)_clamp(2rem,4vw,3rem)_rgba(99,102,241,0.25)]
+                            dark:hover:shadow-[0_clamp(0.5rem,2vw,1rem)_clamp(2rem,4vw,3rem)_rgba(30,58,138,0.4)]
                             p-[clamp(0.5rem,2vw,1rem)]">
                             <GameBoard
                                 gameData={data}
@@ -436,7 +470,7 @@ export default function PlayGame() {
         {showExitWarning && (
             <ExitWarningDialog
                 setShowExitWarning={setShowExitWarning}
-                onExit={() => router.push('/')}
+                onExit={handleExit}
             />
         )}
     </div>

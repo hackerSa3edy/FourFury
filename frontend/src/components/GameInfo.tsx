@@ -9,14 +9,14 @@ interface GameInfoProps {
     handleCancelRematch: () => void;
     rematchStatus: string;
     presenceState: PresenceState;
-    countdowns: {[key: string]: number};
     playerName: string;
     replayInProgress: boolean;
+    forfeitMessage: string;
 }
 
 interface PlayerPresence {
     status: 'online' | 'offline';
-    countdown?: number;
+    countdown?: number | null;
 }
 
 interface PresenceState {
@@ -53,9 +53,9 @@ export const GameInfo = React.memo(({
     handleCancelRematch,
     rematchStatus,
     presenceState,
-    countdowns,
     playerName,
-    replayInProgress
+    replayInProgress,
+    forfeitMessage,
 }: GameInfoProps) => {
     const humanFinishedAt = gameData.finished_at
         ? new Date(gameData.finished_at).toLocaleString(undefined, {
@@ -97,7 +97,6 @@ export const GameInfo = React.memo(({
                     <PlayerStatus
                         name={gameData.player_1}
                         presence={gameData.mode === 'ai' ? { status: 'online' } : presenceState[gameData.player_1_username]}
-                        countdown={gameData.mode === 'ai' ? undefined : countdowns[gameData.player_1_username]}
                         color="from-red-500 via-rose-500 to-red-500 dark:from-purple-300 dark:to-purple-500"
                     />
                     <div className="flex flex-col items-center transform-gpu
@@ -119,7 +118,6 @@ export const GameInfo = React.memo(({
                             <PlayerStatus
                                 name={gameData.player_2 || ''}
                                 presence={gameData.mode === 'ai' ? { status: 'online' } : presenceState[gameData.player_2_username]}
-                                countdown={gameData.mode === 'ai' ? undefined : countdowns[gameData.player_2_username]}
                                 color="from-yellow-500 to-amber-500 dark:from-blue-400 dark:to-cyan-400"
                             />
                         )
@@ -189,12 +187,15 @@ export const GameInfo = React.memo(({
                         </div>
                     )}
 
-                    {rematchStatus === 'waiting' && (
-                        <div className="text-[clamp(1rem,3vw,1.25rem)] font-bold
-                            bg-gradient-to-r from-cyan-500 to-purple-500
+                    {(rematchStatus === 'waiting' || forfeitMessage) && (
+                        <div className={`text-[clamp(1rem,3vw,1.25rem)] font-medium
+                            bg-gradient-to-r ${forfeitMessage
+                                ? 'from-red-500 to-rose-500 dark:from-red-400 dark:to-rose-400'
+                                : 'from-cyan-500 to-purple-500 dark:from-cyan-400 dark:to-purple-400'
+                            }
                             bg-clip-text text-transparent
-                            animate-pulse">
-                            Waiting for opponent to accept rematch...
+                            animate-pulse`}>
+                            {forfeitMessage || 'Waiting for opponent to accept rematch...'}
                         </div>
                     )}
                 </div>
@@ -203,13 +204,19 @@ export const GameInfo = React.memo(({
     );
 });
 
-function PlayerStatus({ name, presence, countdown, color }: {
+function PlayerStatus({ name, presence, color }: {
     name: string;
     presence?: PlayerPresence;
-    countdown?: number;
     color: string;
 }) {
+    // Consider player offline if no presence data
     const isOnline = presence?.status === 'online';
+    const countdown = presence?.countdown;
+    const statusText = isOnline
+        ? '🟢 Online'
+        : countdown
+            ? `⚠️ Away (${countdown}s)`
+            : '🔴 Offline';
 
     return (
         <div className="relative group">
@@ -227,7 +234,7 @@ function PlayerStatus({ name, presence, countdown, color }: {
             `}>
                 <div className={`
                     w-3 sm:w-4 h-3 sm:h-4 relative rounded-full
-                    ${isOnline ? 'bg-green-300' : 'bg-gray-400'}
+                    ${isOnline ? 'bg-green-300' : countdown ? 'bg-yellow-300' : 'bg-red-300'}
                     shadow-inner
                 `}>
                     {isOnline && (
@@ -242,20 +249,6 @@ function PlayerStatus({ name, presence, countdown, color }: {
                     filter drop-shadow-sm">
                     {name}
                 </span>
-
-                {countdown !== undefined && countdown > 0 && (
-                    <div className="absolute -top-2 -right-2 sm:-top-3 sm:-right-3
-                        w-7 h-7 sm:w-9 sm:h-9 rounded-full
-                        bg-gradient-to-br from-red-500 to-rose-600
-                        flex items-center justify-center
-                        animate-bounce shadow-lg transform-gpu
-                        border-2 border-white/30">
-                        <span className="text-sm sm:text-base font-bold text-white
-                            filter drop-shadow-sm">
-                            {countdown}
-                        </span>
-                    </div>
-                )}
             </div>
 
             <div className="absolute -top-14 left-1/2 transform -translate-x-1/2
@@ -266,11 +259,13 @@ function PlayerStatus({ name, presence, countdown, color }: {
                     px-4 py-2 text-sm rounded-lg whitespace-nowrap
                     ${isOnline
                         ? 'bg-gradient-to-r from-green-500 to-emerald-500'
-                        : 'bg-gradient-to-r from-red-500 to-rose-500'}
+                        : countdown
+                            ? 'bg-gradient-to-r from-slate-500 to-slate-400'
+                            : 'bg-gradient-to-r from-red-500 to-rose-500'}
                     text-white shadow-lg
                     backdrop-filter backdrop-blur-sm
                 `}>
-                    {isOnline ? '🟢 Online' : countdown ? `⚠️ Disconnected (${countdown}s)` : '🔴 Offline'}
+                    {statusText}
                 </div>
             </div>
         </div>

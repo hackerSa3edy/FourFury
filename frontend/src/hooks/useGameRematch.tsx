@@ -40,7 +40,13 @@ export function useGameRematch(socket: Socket | null, gameId: string, playerName
     }, [socket, gameId]);
 
     useEffect(() => {
-        if (!socket) return;
+        if (!socket || !gameId) return;
+
+        // Initialize presence when joining game
+        socket.emit('presence_update', {
+            game_id: gameId,
+            status: (!document.hidden) ? 'online' : 'offline'
+        });
 
         socket.on('rematch_requested', (data: RematchRequest) => {
             if (data.requestedBy !== playerName) {

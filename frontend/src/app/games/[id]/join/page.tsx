@@ -158,7 +158,7 @@ export default function JoinGame() {
                 ...prev,
                 error: {
                     message: validationError,
-                    type: 'validation',
+                    type: 'popup',
                     duration: 3000
                 }
             }));
