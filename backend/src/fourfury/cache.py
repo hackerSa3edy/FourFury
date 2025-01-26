@@ -260,7 +260,9 @@ class PresenceManager:
             )
             return 0
 
-    async def get_opponent_status(self, game_id: str, username: str, game: Any = None) -> tuple[str | None, int | None]:
+    async def get_opponent_status(
+        self, game_id: str, username: str, game: Any = None
+    ) -> tuple[str | None, int | None]:
         """
         Get opponent's status and countdown.
         Returns (status, countdown_ttl)
@@ -272,8 +274,12 @@ class PresenceManager:
                     if username == game.player_1_username
                     else game.player_1_username
                 )
-                status = await self.get_player_status(game_id, opponent_username)
-                countdown = await self.get_countdown_ttl(game_id, opponent_username)
+                status = await self.get_player_status(
+                    game_id, opponent_username
+                )
+                countdown = await self.get_countdown_ttl(
+                    game_id, opponent_username
+                )
                 return opponent_username, status, countdown
             return None, None
         except Exception as e:

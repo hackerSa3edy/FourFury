@@ -59,27 +59,25 @@ class GameManager:
             await self.broadcast_game(game)
 
             # Force player status to offline after forfeit
-            await presence_manager.set_player_status(str(game.id), username, "offline")
+            await presence_manager.set_player_status(
+                str(game.id), username, "offline"
+            )
 
             # Notify players about forfeit and presence change
             await sio.emit(
                 "forfeit_game",
                 {
                     "username": username,
-                    "message": f"{game.player_1 if game.winner != PlayerEnum.PLAYER_1 else game.player_2} has forfeited the game!"
+                    "message": f"{game.player_1 if game.winner != PlayerEnum.PLAYER_1 else game.player_2} has forfeited the game!",
                 },
-                room=str(game.id)
+                room=str(game.id),
             )
 
             # Emit presence change after forfeit
             await sio.emit(
                 "countdown_update",
-                {
-                    "username": username,
-                    "countdown": None,
-                    "status": "offline"
-                },
-                room=str(game.id)
+                {"username": username, "countdown": None, "status": "offline"},
+                room=str(game.id),
             )
 
             print(f"Player {username} forfeited game {game_id}")
@@ -103,7 +101,9 @@ async def listen_for_timeouts():
                 logger.info(
                     f"Timeout expired for player {username} in game {game_id}"
                 )
-                print(f"Timeout expired for player {username} in game {game_id}")
+                print(
+                    f"Timeout expired for player {username} in game {game_id}"
+                )
                 await game_manager.handle_forfeit(game_id, username)
 
 
@@ -166,7 +166,9 @@ async def disconnect(sid: str) -> None:
 
         # Handle game disconnection if player was in a game
         if game_id and username:
-            presence_manager.set_player_status(game_id.split(',')[0], username, "offline")
+            presence_manager.set_player_status(
+                game_id.split(",")[0], username, "offline"
+            )
 
     except Exception as e:
         logger.error(f"Disconnect cleanup error: {e}")
@@ -184,7 +186,9 @@ async def join_game_room(sid: str, game_id: str, playerStatus: str) -> None:
     if session.get("username"):
         username = session["username"]
         # Set initial presence status
-        await presence_manager.set_player_status(game_id, username, playerStatus)
+        await presence_manager.set_player_status(
+            game_id, username, playerStatus
+        )
         if playerStatus == "offline":
             # Start timeout for disconnected player
             await presence_manager.start_countdown(game_id, username)
@@ -194,21 +198,17 @@ async def join_game_room(sid: str, game_id: str, playerStatus: str) -> None:
                 {
                     "username": username,
                     "countdown": presence_manager.PLAYER_TIMEOUT,
-                    "status": "offline"
+                    "status": "offline",
                 },
-                room=game_id
+                room=game_id,
             )
         else:
             # Player reconnected - stop timeout
             await presence_manager.stop_countdown(game_id, username)
             await sio.emit(
                 "countdown_update",
-                {
-                    "username": username,
-                    "countdown": None,
-                    "status": "online"
-                },
-                room=game_id
+                {"username": username, "countdown": None, "status": "online"},
+                room=game_id,
             )
 
         # Store game_id in session for cleanup
@@ -222,20 +222,17 @@ async def leave_game(sid: str, game_id: str) -> None:
     # Clear player presence
     session = await sio.get_session(sid)
     if session.get("username"):
-        await presence_manager.del_player_status(
-            game_id, session["username"]
-        )
+        await presence_manager.del_player_status(game_id, session["username"])
 
     await sio.emit(
         "countdown_update",
         {
             "username": session["username"],
             "countdown": None,
-            "status": "offline"
+            "status": "offline",
         },
         room=game_id,
     )
-
 
 
 @sio.event
@@ -317,7 +314,7 @@ async def start_matching(
         game_data = game.model_dump_json()
 
         # Join the socket room for this game
-        await join_game_room(sid, str(game.id), 'online')
+        await join_game_room(sid, str(game.id), "online")
 
         if game.player_2_username:
             # Match found - notify both players
@@ -411,7 +408,12 @@ async def request_rematch(sid: str, game_id: str) -> None:
             else game.player_1_username
         )
 
-        is_opponent_present = await presence_manager.get_player_status(game_id, opponent_username) == "online"
+        is_opponent_present = (
+            await presence_manager.get_player_status(
+                game_id, opponent_username
+            )
+            == "online"
+        )
 
         if not is_opponent_present:
             await sio.emit(
@@ -509,7 +511,9 @@ async def presence_update(sid: str, data: dict[str, Any]) -> None:
             return
 
         # Update current player's status
-        previous_status = await presence_manager.get_player_status(game_id, username)
+        previous_status = await presence_manager.get_player_status(
+            game_id, username
+        )
         await presence_manager.set_player_status(game_id, username, status)
 
         # Get current player's countdown
@@ -521,10 +525,16 @@ async def presence_update(sid: str, data: dict[str, Any]) -> None:
             await presence_manager.stop_countdown(game_id, username)
             current_countdown = None
         else:
-            current_countdown = await presence_manager.get_countdown_ttl(game_id, username)
+            current_countdown = await presence_manager.get_countdown_ttl(
+                game_id, username
+            )
 
         # Get opponent's status and countdown
-        opponent_username, opponent_status, opponent_countdown = await presence_manager.get_opponent_status(game_id, username, game)
+        (
+            opponent_username,
+            opponent_status,
+            opponent_countdown,
+        ) = await presence_manager.get_opponent_status(game_id, username, game)
 
         # Emit current player status
         await sio.emit(
@@ -532,9 +542,9 @@ async def presence_update(sid: str, data: dict[str, Any]) -> None:
             {
                 "username": username,
                 "countdown": current_countdown,
-                "status": status
+                "status": status,
             },
-            room=game_id
+            room=game_id,
         )
 
         # Emit opponent status if available
@@ -544,9 +554,9 @@ async def presence_update(sid: str, data: dict[str, Any]) -> None:
                 {
                     "username": opponent_username,
                     "countdown": opponent_countdown,
-                    "status": opponent_status
+                    "status": opponent_status,
                 },
-                room=game_id
+                room=game_id,
             )
 
     except Exception as e:

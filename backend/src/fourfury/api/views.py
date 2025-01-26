@@ -212,11 +212,7 @@ async def get_game(
     responses={
         200: {
             "description": "Successfully deleted games",
-            "content": {
-                "application/json": {
-                    "example": {"deleted_count": 5}
-                }
-            },
+            "content": {"application/json": {"example": {"deleted_count": 5}}},
         }
     },
 )
@@ -236,9 +232,7 @@ async def delete_games() -> dict[str, int]:
     """,
     responses={
         401: {"description": "Invalid session"},
-        400: {
-            "description": "Cannot join game (full/self-join/invalid mode)"
-        },
+        400: {"description": "Cannot join game (full/self-join/invalid mode)"},
         404: {"description": "Game not found"},
         500: {"description": "Failed to join game"},
     },
