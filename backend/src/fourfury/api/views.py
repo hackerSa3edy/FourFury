@@ -22,10 +22,33 @@ from .models import Game, GameMode, StartGame
 from .socketio_manager import game_manager
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/games", tags=["Games"])
+router = APIRouter(
+    prefix="/games",
+    tags=["Games"],
+    responses={404: {"description": "Not found"}},
+)
 
 
-@router.post("/create_session/", response_model=dict[str, str])
+@router.post(
+    "/create_session/",
+    response_model=dict[str, str],
+    status_code=status.HTTP_200_OK,
+    summary="Create a new session",
+    description="""
+    Creates a new session or validates an existing one.
+    Returns session ID and username in cookies and response body.
+    """,
+    responses={
+        200: {
+            "description": "Successfully created/validated session",
+            "content": {
+                "application/json": {
+                    "example": {"session_id": "abc123", "username": "player1"}
+                }
+            },
+        }
+    },
+)
 async def create_session(
     response: Response,
     request: Request,
@@ -48,7 +71,21 @@ async def create_session(
     return {"session_id": session_id, "username": username}
 
 
-@router.post("/start/", response_model=Game)
+@router.post(
+    "/start/",
+    response_model=Game,
+    status_code=status.HTTP_200_OK,
+    summary="Start a new game",
+    description="""
+    Starts a new game with specified mode and settings.
+    Requires valid session credentials in cookies.
+    """,
+    responses={
+        401: {"description": "Invalid session"},
+        400: {"description": "Invalid game mode or configuration"},
+        500: {"description": "Failed to start game"},
+    },
+)
 async def start_game(
     request: Request,
     start_game: StartGame,
@@ -91,7 +128,16 @@ async def start_game(
     return game
 
 
-@router.get("/", response_model=list[Game])
+@router.get(
+    "/",
+    response_model=list[Game],
+    status_code=status.HTTP_200_OK,
+    summary="Get all games",
+    description="Retrieves all available games. Requires valid session.",
+    responses={
+        401: {"description": "Invalid session"},
+    },
+)
 async def get_games(request: Request) -> list[Game]:
     session_id = request.cookies.get("session_id")
     username = request.cookies.get("username")
@@ -107,7 +153,21 @@ async def get_games(request: Request) -> list[Game]:
     return await get_all_games()
 
 
-@router.get("/{game_id}/", response_model=Game)
+@router.get(
+    "/{game_id}/",
+    response_model=Game,
+    status_code=status.HTTP_200_OK,
+    summary="Get game by ID",
+    description="""
+    Retrieves a specific game by its ID.
+    User must be a participant in the game to access it.
+    """,
+    responses={
+        401: {"description": "Invalid session"},
+        403: {"description": "User is not a player in this game"},
+        404: {"description": "Game not found"},
+    },
+)
 async def get_game(
     request: Request,
     game_id: PyObjectId,
@@ -143,19 +203,55 @@ async def get_game(
     return game
 
 
-@router.delete("/", response_model=dict[str, int])
+@router.delete(
+    "/",
+    response_model=dict[str, int],
+    status_code=status.HTTP_200_OK,
+    summary="Delete all games",
+    description="Removes all games from the database.",
+    responses={
+        200: {
+            "description": "Successfully deleted games",
+            "content": {
+                "application/json": {
+                    "example": {"deleted_count": 5}
+                }
+            },
+        }
+    },
+)
 async def delete_games() -> dict[str, int]:
     deleted_count = await delete_all_games()
     return {"deleted_count": deleted_count}
 
 
-@router.post("/{game_id}/join/", response_model=Game)
+@router.post(
+    "/{game_id}/join/",
+    response_model=Game,
+    status_code=status.HTTP_200_OK,
+    summary="Join an existing game",
+    description="""
+    Allows a player to join an existing game.
+    Requires valid session and the game must have an open slot.
+    """,
+    responses={
+        401: {"description": "Invalid session"},
+        400: {
+            "description": "Cannot join game (full/self-join/invalid mode)"
+        },
+        404: {"description": "Game not found"},
+        500: {"description": "Failed to join game"},
+    },
+)
 async def join_game(
     request: Request,
     game_id: PyObjectId,
     player_name: str = Body(
-        ..., embed=True
-    ),  # Change this line to accept from body
+        ...,
+        embed=True,
+        description="Name of the player joining the game",
+        example="Player 2",
+    ),
 ) -> Game:
     session_id = request.cookies.get("session_id")
     username = request.cookies.get("username")

@@ -30,7 +30,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         app.state.mongo_db.client.close()
 
 
-app = FastAPI(title="FourFury", lifespan=lifespan)
+app = FastAPI(
+    title="FourFury",
+    description="""
+    FourFury Game API
+
+    This API provides endpoints for managing Connect Four games with various modes:
+    * Human vs Human
+    * Human vs AI
+    * Online multiplayer
+
+    All endpoints require session authentication via cookies.
+    """,
+    version="1.0.0",
+    lifespan=lifespan,
+)
 
 # Add CORS middleware
 app.add_middleware(
