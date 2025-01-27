@@ -24,6 +24,17 @@ export const metadata: Metadata = {
   description: "Challenge your strategic thinking with Four Fury, a modern take on the classic Connect4 game. Play with friends in real-time multiplayer matches.",
   keywords: ['Connect4', 'board game', 'multiplayer game', 'strategy game', 'online game'],
   authors: [{ name: 'FourFury Team (Abdelrahman Mohamed @real3bdelrahman)' }],
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: '16x16' },
+      { url: '/icon-32.png', sizes: '32x32' },
+      { url: '/icon-192.png', sizes: '192x192' },
+      { url: '/icon-512.png', sizes: '512x512' },
+    ],
+    apple: [
+      { url: '/apple-icon.png', sizes: '180x180' },
+    ],
+  },
   openGraph: {
     title: 'Four Fury',
     description: 'Challenge your friends in Four Fury - The Ultimate Connect4 Experience',
