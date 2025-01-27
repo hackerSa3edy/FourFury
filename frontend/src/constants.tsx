@@ -1,2 +1,2 @@
-export const BACKEND_API_BASE_URL = "http://localhost/api";
-export const SOCKETIO_BASE_URL = "ws://localhost";
+export const BACKEND_API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL;
+export const SOCKETIO_BASE_URL = process.env.NEXT_PUBLIC_SOCKETIO_URL;

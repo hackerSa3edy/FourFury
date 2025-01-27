@@ -86,6 +86,20 @@ Before you begin, ensure you have the following installed:
     yarn install
     ```
 
+3. Configure environment variables:
+
+    ```bash
+    # Copy the example env file
+    cp .example.env.local .env.local
+
+    # Edit .env.local with your configuration
+    nano .env.local
+    ```
+
+   Required environment variables:
+   - `NEXT_PUBLIC_BACKEND_API_URL`: Your backend API URL
+   - `NEXT_PUBLIC_SOCKETIO_URL`: Your Socket.IO server URL
+
 ## 🏃‍♂️ Running the Application
 
 ### Development Mode
