@@ -75,7 +75,7 @@ export function useGameRematch(socket: Socket | null, gameId: string, playerName
             setRematchRequest(null);
             setTimeout(() => {
                 setRematchStatus('idle');
-                router.push('/');
+                router.push('/modes');
             }, 2000);
         });
 
@@ -85,7 +85,7 @@ export function useGameRematch(socket: Socket | null, gameId: string, playerName
             setRematchRequest(null);
             setTimeout(() => {
                 setRematchError(null);
-                router.push('/');
+                router.push('/modes');
             }, 3500);
         });
 
@@ -102,7 +102,7 @@ export function useGameRematch(socket: Socket | null, gameId: string, playerName
                 setRematchError('Opponent left the game');
                 setTimeout(() => {
                     setRematchError(null);
-                    router.push('/');
+                    router.push('/modes');
                 }, 3500);
             }
         });
@@ -114,7 +114,7 @@ export function useGameRematch(socket: Socket | null, gameId: string, playerName
                 setRematchStatus('idle');
                 setTimeout(() => {
                     setRematchError(null);
-                    router.push('/');
+                    router.push('/modes');
                 }, 3500);
             }
         };

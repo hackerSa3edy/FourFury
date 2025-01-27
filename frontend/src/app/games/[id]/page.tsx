@@ -205,7 +205,7 @@ export default function PlayGame() {
             setShowExitWarning(true);
         } else {
             socket?.emit('leave_game', data?.id);
-            router.push('/');
+            router.push('/modes');
         }
     };
 
@@ -215,7 +215,7 @@ export default function PlayGame() {
         }
         socket?.emit('leave_game', data?.id);
 
-        router.push('/');
+        router.push('/modes');
     }, [socket, data, router]);
 
     // Enhanced loading state

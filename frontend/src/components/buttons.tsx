@@ -176,7 +176,7 @@ export const HomeButton = memo(function HomeButton({ onClick }: HomeButtonProps)
             onClick();
             return;
         }
-        router.push('/');
+        router.push('/modes');
     };
 
     return (
