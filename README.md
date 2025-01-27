@@ -33,10 +33,10 @@
     </table>
 </div>
 
-## Table of Contents
+## 📋 Table of Contents
 
 - [Overview](#overview)
-<!-- - [Live Demo](#live-demo) -->
+- [Live Demo](#live-demo)
 - [Features](#features)
 - [Technologies Used](#technologies-used)
 - [Getting Started](#getting-started)
@@ -51,7 +51,7 @@
 - [Future Enhancements](#future-enhancements)
 - [Team](#team)
 
-## Overview
+## 📝 Overview
 
 FourFury is a sophisticated implementation of the classic Connect Four game, built with modern web technologies. It offers multiple game modes including AI opponents with adjustable difficulty levels and real-time online multiplayer matches.
 
@@ -67,11 +67,11 @@ For detailed technical documentation:
 - [Frontend Documentation](./frontend/README.md)
 - [Backend Documentation](./backend/README.md)
 
-<!-- ## Live Demo
+## 🎥 Live Demo
 
-[![FourFury Demo](path/to/demo-image.png)](https://fourfury.example.com) -->
+[![FourFury Demo](./media/alx-graduation_project%20(FourFury).jpg)](https://drive.google.com/file/d/1FF2ER7ox5tWTjVs0UVCYG76Q8e69Yg6m/view)
 
-## Features
+## ⭐ Features
 
 ### Core Gameplay
 
@@ -147,9 +147,9 @@ For detailed technical documentation:
 
 For detailed technical specifications and setup instructions, please refer to the respective frontend and backend README files.
 
-## Getting Started
+## 🚀 Getting Started
 
-### Prerequisites
+### 📋 Prerequisites
 
 #### Docker Installation
 
@@ -167,7 +167,7 @@ For detailed technical specifications and setup instructions, please refer to th
 - MongoDB 7.0+
 - Redis 7.2+
 
-### Installation
+### ⚙️ Installation
 
 #### Using Docker Compose (Recommended)
 
@@ -225,7 +225,7 @@ For detailed technical specifications and setup instructions, please refer to th
 
 4. Setup MongoDB and Redis locally
 
-## Usage
+## 💻 Usage
 
 ### Docker Compose Services
 
@@ -300,7 +300,7 @@ Our docker-compose.yml sets up a complete development environment with five serv
    docker compose exec [service_name] ping [other_service]
    ```
 
-## Architecture
+## 🏗️ Architecture
 
 ### System Overview
 
@@ -367,11 +367,11 @@ FourFury
     └── nginx.conf
 ```
 
-## Development Journey
+## 🛣️ Development Journey
 
 Our journey in developing FourFury has been both challenging and rewarding. This section outlines our key milestones, challenges, and learnings.
 
-### Achievements
+### 🏆 Achievements
 
 - Successfully implemented a real-time multiplayer system using Socket.IO
 - Created an efficient AI opponent with multiple difficulty levels
@@ -384,7 +384,7 @@ Our journey in developing FourFury has been both challenging and rewarding. This
 - Achieved 95%+ test coverage for core game logic
 - Implemented efficient board serialization for state management
 
-### Challenges
+### 💪 Challenges
 
 - Optimizing winner detection
   - Initial naive approach was too CPU-intensive
@@ -410,7 +410,7 @@ Our journey in developing FourFury has been both challenging and rewarding. This
   - Implementing efficient board evaluation
   - Managing computation time constraints
 
-### Lessons Learned
+### 📚 Lessons Learned
 
 - Technical Insights
   - WebSocket management requires careful error handling
@@ -437,7 +437,7 @@ Our journey in developing FourFury has been both challenging and rewarding. This
   - Accessibility cannot be an afterthought
   - Performance impacts user engagement
 
-## Future Enhancements
+## 🔮 Future Enhancements
 
 - [ ] Implement bitboard representation for faster win detection
 - [ ] Optimize winner detection to check only around last move
@@ -449,9 +449,9 @@ Our journey in developing FourFury has been both challenging and rewarding. This
   - [ ] User profiles
   - [ ] Data persistence for signed-in users
 
-## Team
+## 👥 Team
 
-### Lead Developer
+### 👨‍💻 Lead Developer
 
 #### Abdelrahman Mohamed
 
