@@ -535,6 +535,62 @@ These properties:
 - Prevent flickering on scroll
 - Improve animation performance on mobile devices
 
+## 📦 Root Layout Optimizations
+
+### Font Optimization
+
+- Custom Inter font configuration with performance optimizations:
+  - Uses `display: 'swap'` for faster initial render
+  - Implements font variable for consistent usage
+  - Includes comprehensive fallback fonts
+  - Preloads font for better performance
+
+### SEO & Metadata
+
+- Comprehensive metadata configuration:
+  - Dynamic title templates
+  - Detailed site description
+  - Optimized keywords
+  - Author information
+  - Multiple favicon sizes
+  - Apple-specific icons
+  - OpenGraph and Twitter card support
+
+### Viewport Optimization
+
+- Responsive viewport settings:
+  - Dynamic theme color based on color scheme
+  - Controlled scaling limits
+  - Device-specific dimensions
+  - Optimized for iOS safe areas
+  - Touch highlight customization
+
+### Performance Features
+
+- Body optimizations:
+  - Smooth gradient backgrounds
+  - Hardware-accelerated transitions
+  - Font smoothing
+  - Overflow control
+  - Touch scroll optimization
+  - Text size adjustments
+
+### Accessibility
+
+- Language specification
+- ARIA attributes
+- Color contrast compliance
+- Font size adjustment support
+- Screen reader optimization
+
+### Theme Support
+
+- Dynamic dark/light mode
+- Smooth theme transitions
+- System preference detection
+- Persistent theme selection
+- Custom color schemes
+
 ## 🌟 Support
 
 Give a ⭐️ if this project helped you!
