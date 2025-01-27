@@ -7,6 +7,22 @@
 
 > A powerful, real-time backend service for the FourFury game, built with FastAPI and Socket.IO 🚀
 
+## 📑 Table of Contents
+
+- [Project Overview](#-project-overview)
+- [Technology Stack](#-technology-stack)
+- [Prerequisites](#-prerequisites)
+- [Quick Start](#-quick-start)
+- [Project Structure](#-project-structure)
+- [Configuration](#️-configuration)
+- [Redis Usage](#-redis-usage)
+- [API Documentation](#-api-documentation)
+- [Socket.IO Events](#socketio-events)
+- [Database](#️-database)
+- [Testing](#-testing)
+- [Development Tools](#️-development-tools)
+- [Security](#-security)
+
 ## 🎯 Project Overview
 
 - **Project Name**: FourFury Backend Service
@@ -362,8 +378,98 @@ The complete OpenAPI specification is available in the [/docs](./docs/openapi.js
 
 ## 🗄️ Database
 
+### MongoDB Configuration
+
 - Uses MongoDB with motor as the async driver
 - Includes type hints through motor-types
+- Database configuration via environment variables:
+
+  ```env
+  MONGODB_URL=mongodb://localhost:27017
+  MONGODB_DB_NAME=fourfury
+  ```
+
+### Schema
+
+#### Game Collection
+
+```typescript
+{
+  _id: ObjectId,             // Unique game identifier
+  player_1: string,          // First player's name
+  player_1_username: string, // First player's username
+  player_2?: string,         // Second player's name (optional)
+  player_2_username?: string,// Second player's username (optional)
+  move_number: number,       // Current move number (starts at 1)
+  board: number[][],         // 6x7 game board array
+  moves: [{                  // Array of moves made
+    row: number,
+    column: number,
+    value: number           // Player enum (1 or 2)
+  }],
+  winner?: number,          // Winner's player number (1 or 2)
+  finished_at?: Date,       // Game completion timestamp
+  mode: string,             // Game mode (human/ai/online)
+  ai_difficulty?: number,   // AI difficulty level (1-5)
+  created_at: Date,         // Game creation timestamp
+  updated_at: Date          // Last update timestamp
+}
+```
+
+### Indexes
+
+```javascript
+// Games Collection Indexes
+[
+  { "player_1": 1 },          // Query games by player_1
+  { "player_2": 1 },          // Query games by player_2
+  { "created_at": 1 },        // Sort by creation time
+  { "updated_at": 1 }         // Sort by update time
+]
+```
+
+### Key Features
+
+- **Schema Validation**: Enforced through Pydantic models
+- **Automatic Timestamps**: Created and updated timestamps
+- **Efficient Queries**: Optimized through strategic indexes
+- **Type Safety**: Full type hints with motor-types
+- **Async Operations**: Non-blocking database operations
+
+### Common Database Operations
+
+```python
+# Get a game by ID
+game = await db.get_game(game_id)
+
+# Create a new game
+game_id = await db.create_game(game_data)
+
+# Update game state
+await db.update_game(game_id, updated_data)
+
+# List games for a player
+games = await db.list_player_games(player_username)
+```
+
+### Data Models
+
+The database schema is enforced through Pydantic models:
+
+```python
+class Game(MongoDBModel):
+    player_1: str
+    player_1_username: str
+    player_2: str | None
+    player_2_username: str | None
+    move_number: int
+    board: list[list[PlayerEnum]]
+    moves: list[Move]
+    winner: PlayerEnum | None
+    finished_at: datetime | None
+    mode: GameMode
+    ai_difficulty: int | None
+```
 
 ## 🧪 Testing
 
