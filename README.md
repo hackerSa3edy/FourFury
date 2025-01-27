@@ -269,7 +269,8 @@ graph TB
     Nginx --> Backend
     Backend <--> Redis
     Backend <--> MongoDB
-    Client <-.->|WebSocket| Backend
+    Client <-.->|WebSocket| Nginx
+    Nginx <-.->|WebSocket| Backend
 ```
 
 ### Repo Structure
