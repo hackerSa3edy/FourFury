@@ -1,0 +1,603 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "FourFury",
+        "description": "\n    FourFury Game API\n\n    This API provides endpoints for managing Connect Four games with various modes:\n    * Human vs Human\n    * Human vs AI\n    * Online multiplayer\n\n    All endpoints require session authentication via cookies.\n    ",
+        "version": "1.0.0"
+    },
+    "paths": {
+        "/api/games/create_session/": {
+            "post": {
+                "tags": [
+                    "Games"
+                ],
+                "summary": "Create a new session",
+                "description": "Creates a new session or validates an existing one.\n    Returns session ID and username in cookies and response body.",
+                "operationId": "create_session_api_games_create_session__post",
+                "responses": {
+                    "200": {
+                        "description": "Successfully created/validated session",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    },
+                                    "type": "object",
+                                    "title": "Response Create Session Api Games Create Session  Post"
+                                },
+                                "example": {
+                                    "session_id": "abc123",
+                                    "username": "player1"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found"
+                    }
+                }
+            }
+        },
+        "/api/games/start/": {
+            "post": {
+                "tags": [
+                    "Games"
+                ],
+                "summary": "Start a new game",
+                "description": "Starts a new game with specified mode and settings.\n    Requires valid session credentials in cookies.",
+                "operationId": "start_game_api_games_start__post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StartGame"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Game"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found"
+                    },
+                    "401": {
+                        "description": "Invalid session"
+                    },
+                    "400": {
+                        "description": "Invalid game mode or configuration"
+                    },
+                    "500": {
+                        "description": "Failed to start game"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/games/": {
+            "get": {
+                "tags": [
+                    "Games"
+                ],
+                "summary": "Get all games",
+                "description": "Retrieves all available games. Requires valid session.",
+                "operationId": "get_games_api_games__get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "items": {
+                                        "$ref": "#/components/schemas/Game"
+                                    },
+                                    "type": "array",
+                                    "title": "Response Get Games Api Games  Get"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found"
+                    },
+                    "401": {
+                        "description": "Invalid session"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Games"
+                ],
+                "summary": "Delete all games",
+                "description": "Removes all games from the database.",
+                "operationId": "delete_games_api_games__delete",
+                "responses": {
+                    "200": {
+                        "description": "Successfully deleted games",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "additionalProperties": {
+                                        "type": "integer"
+                                    },
+                                    "type": "object",
+                                    "title": "Response Delete Games Api Games  Delete"
+                                },
+                                "example": {
+                                    "deleted_count": 5
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found"
+                    }
+                }
+            }
+        },
+        "/api/games/{game_id}/": {
+            "get": {
+                "tags": [
+                    "Games"
+                ],
+                "summary": "Get game by ID",
+                "description": "Retrieves a specific game by its ID.\n    User must be a participant in the game to access it.",
+                "operationId": "get_game_api_games__game_id___get",
+                "parameters": [
+                    {
+                        "name": "game_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Game Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Game"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Game not found"
+                    },
+                    "401": {
+                        "description": "Invalid session"
+                    },
+                    "403": {
+                        "description": "User is not a player in this game"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/games/{game_id}/join/": {
+            "post": {
+                "tags": [
+                    "Games"
+                ],
+                "summary": "Join an existing game",
+                "description": "Allows a player to join an existing game.\n    Requires valid session and the game must have an open slot.",
+                "operationId": "join_game_api_games__game_id__join__post",
+                "parameters": [
+                    {
+                        "name": "game_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Game Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Body_join_game_api_games__game_id__join__post"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Game"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Game not found"
+                    },
+                    "401": {
+                        "description": "Invalid session"
+                    },
+                    "400": {
+                        "description": "Cannot join game (full/self-join/invalid mode)"
+                    },
+                    "500": {
+                        "description": "Failed to join game"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "Body_join_game_api_games__game_id__join__post": {
+                "properties": {
+                    "player_name": {
+                        "type": "string",
+                        "title": "Player Name",
+                        "description": "Name of the player joining the game"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "player_name"
+                ],
+                "title": "Body_join_game_api_games__game_id__join__post"
+            },
+            "Game": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At",
+                        "default": "2025-01-26T23:37:08.139107Z"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Updated At",
+                        "default": "2025-01-26T23:37:08.139153Z"
+                    },
+                    "player_1": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "title": "Player 1"
+                    },
+                    "player_1_username": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "title": "Player 1 Username"
+                    },
+                    "player_2": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 100
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Player 2"
+                    },
+                    "player_2_username": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 100
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Player 2 Username"
+                    },
+                    "move_number": {
+                        "type": "integer",
+                        "title": "Move Number",
+                        "default": 1
+                    },
+                    "board": {
+                        "items": {
+                            "items": {
+                                "$ref": "#/components/schemas/PlayerEnum"
+                            },
+                            "type": "array"
+                        },
+                        "type": "array",
+                        "title": "Board",
+                        "default": [
+                            [
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0
+                            ],
+                            [
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0
+                            ],
+                            [
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0
+                            ],
+                            [
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0
+                            ],
+                            [
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0
+                            ],
+                            [
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0
+                            ]
+                        ]
+                    },
+                    "movees": {
+                        "items": {
+                            "$ref": "#/components/schemas/Move"
+                        },
+                        "type": "array",
+                        "title": "Movees"
+                    },
+                    "winner": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/PlayerEnum"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "finished_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Finished At"
+                    },
+                    "mode": {
+                        "$ref": "#/components/schemas/GameMode",
+                        "default": "human"
+                    },
+                    "ai_difficulty": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Ai Difficulty"
+                    },
+                    "next_player_to_move_username": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Next Player To Move Username",
+                        "readOnly": true
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "player_1",
+                    "player_1_username",
+                    "next_player_to_move_username"
+                ],
+                "title": "Game"
+            },
+            "GameMode": {
+                "type": "string",
+                "enum": [
+                    "human",
+                    "ai",
+                    "online"
+                ],
+                "title": "GameMode"
+            },
+            "HTTPValidationError": {
+                "properties": {
+                    "detail": {
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationError"
+                        },
+                        "type": "array",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "title": "HTTPValidationError"
+            },
+            "Move": {
+                "properties": {
+                    "row": {
+                        "type": "integer",
+                        "minimum": 0.0,
+                        "title": "Row"
+                    },
+                    "column": {
+                        "type": "integer",
+                        "minimum": 0.0,
+                        "title": "Column"
+                    },
+                    "value": {
+                        "$ref": "#/components/schemas/PlayerEnum"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "row",
+                    "column",
+                    "value"
+                ],
+                "title": "Move"
+            },
+            "PlayerEnum": {
+                "type": "integer",
+                "enum": [
+                    0,
+                    1,
+                    2,
+                    3
+                ],
+                "title": "PlayerEnum"
+            },
+            "StartGame": {
+                "properties": {
+                    "player_name": {
+                        "type": "string",
+                        "title": "Player Name"
+                    },
+                    "mode": {
+                        "$ref": "#/components/schemas/GameMode",
+                        "default": "human"
+                    },
+                    "ai_difficulty": {
+                        "anyOf": [
+                            {
+                                "type": "integer",
+                                "maximum": 5.0,
+                                "minimum": 1.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Ai Difficulty",
+                        "default": 3
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "player_name"
+                ],
+                "title": "StartGame"
+            },
+            "ValidationError": {
+                "properties": {
+                    "loc": {
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer"
+                                }
+                            ]
+                        },
+                        "type": "array",
+                        "title": "Location"
+                    },
+                    "msg": {
+                        "type": "string",
+                        "title": "Message"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Error Type"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "loc",
+                    "msg",
+                    "type"
+                ],
+                "title": "ValidationError"
+            }
+        }
+    }
+}
