@@ -1,6 +1,37 @@
-# FourFury
+<div align="center">
+    <img src="./media/fourfury-logo.png" alt="FourFury Logo" width="200">
+    <h1>FourFury</h1>
+    <p>A modern, real-time Connect Four game featuring AI opponents and online multiplayer</p>
 
-> A modern, real-time Connect Four game featuring AI opponents and online multiplayer
+[![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
+[![Next.js](https://img.shields.io/badge/Next.js-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![Python](https://img.shields.io/badge/Python-3.10+-blue?style=for-the-badge&logo=python)](https://www.python.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-4EA94B?style=for-the-badge&logo=mongodb)](https://www.mongodb.com/)
+[![Redis](https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white)](https://redis.io/)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=for-the-badge)](http://makeapullrequest.com)
+
+</div>
+
+## 🎮 Project Preview
+
+<div align="center">
+    <table>
+        <tr>
+            <td align="center">
+                <strong>Light Mode</strong><br>
+                <img src="./media/Connect4_landing-dayMode.png" alt="Light Mode" width="400"/>
+            </td>
+            <td align="center">
+                <strong>Dark Mode</strong><br>
+                <img src="./media/Connect4_landing-darkMode.png" alt="Dark Mode" width="400"/>
+            </td>
+        </tr>
+    </table>
+</div>
 
 ## Table of Contents
 
@@ -35,14 +66,6 @@ For detailed technical documentation:
 
 - [Frontend Documentation](./frontend/README.md)
 - [Backend Documentation](./backend/README.md)
-
-### Light Mode
-
-![FourFury Landing Page - Light Mode](./media/Connect4_landing-dayMode.png)
-
-### Dark Mode
-
-![FourFury Landing Page - Dark Mode](./media/Connect4_landing-darkMode.png)
 
 <!-- ## Live Demo
 
@@ -79,22 +102,48 @@ For detailed technical documentation:
 - Modern React frontend with Next.js
 - Type-safe with TypeScript and Python type hints
 
-## Technologies Used
+## 🛠️ Technology Stack
 
-### Frontend
-
-- Next.js 13+
-- TypeScript
-- TailwindCSS
-- Socket.IO Client
-
-### Backend
-
-- FastAPI
-- Python 3.10+
-- Socket.IO
-- Redis
-- MongoDB
+<div align="center">
+    <table>
+        <tr>
+            <td align="center">
+                <img src="https://cdn.worldvectorlogo.com/logos/nextjs-2.svg" width="40"/><br>
+                <strong>Next.js</strong>
+            </td>
+            <td align="center">
+                <img src="https://www.vectorlogo.zone/logos/typescriptlang/typescriptlang-icon.svg" width="40"/><br>
+                <strong>TypeScript</strong>
+            </td>
+            <td align="center">
+                <img src="https://www.vectorlogo.zone/logos/tailwindcss/tailwindcss-icon.svg" width="40"/><br>
+                <strong>TailwindCSS</strong>
+            </td>
+            <td align="center">
+                <img src="https://www.vectorlogo.zone/logos/socketio/socketio-icon.svg" width="40"/><br>
+                <strong>Socket.IO</strong>
+            </td>
+        </tr>
+        <tr>
+            <td align="center">
+                <img src="https://cdn.worldvectorlogo.com/logos/fastapi.svg" width="40"/><br>
+                <strong>FastAPI</strong>
+            </td>
+            <td align="center">
+                <img src="https://www.vectorlogo.zone/logos/python/python-icon.svg" width="40"/><br>
+                <strong>Python</strong>
+            </td>
+            <td align="center">
+                <img src="https://www.vectorlogo.zone/logos/redis/redis-icon.svg" width="40"/><br>
+                <strong>Redis</strong>
+            </td>
+            <td align="center">
+                <img src="https://www.vectorlogo.zone/logos/mongodb/mongodb-icon.svg" width="40"/><br>
+                <strong>MongoDB</strong>
+            </td>
+        </tr>
+    </table>
+</div>
 
 For detailed technical specifications and setup instructions, please refer to the respective frontend and backend README files.
 
@@ -418,4 +467,20 @@ Our journey in developing FourFury has been both challenging and rewarding. This
   - GitHub: [@hackerSa3edy](https://github.com/hackerSa3edy)
   - LinkedIn: [Abdelrahman Mohamed](https://www.linkedin.com/in/abdelrahmanm0/)
 
-Made with ❤️ as part of the ALX Software Engineering Program
+<div align="center">
+    <p>
+        <img src="https://assets.imaginablefutures.com/media/images/ALX_Logo.max-200x150.png" alt="ALX Logo" width="200">
+    </p>
+    <hr>
+    <p>
+        <strong>Made with ❤️ as part of the ALX Software Engineering Program</strong>
+    </p>
+    <p>
+        <a href="https://github.com/hackerSa3edy">
+            <img src="https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white" alt="GitHub">
+        </a>
+        <a href="https://www.linkedin.com/in/abdelrahmanm0/">
+            <img src="https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white" alt="LinkedIn">
+        </a>
+    </p>
+</div>
