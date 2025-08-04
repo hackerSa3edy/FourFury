@@ -469,7 +469,7 @@ Our journey in developing FourFury has been both challenging and rewarding. This
 
 <div align="center">
     <p>
-        <img src="https://assets.imaginablefutures.com/media/images/ALX_Logo.max-200x150.png" alt="ALX Logo" width="200">
+        <img src="media/alx.png" alt="ALX Logo" width="80">
     </p>
     <hr>
     <p>
